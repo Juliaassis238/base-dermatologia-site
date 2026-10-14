@@ -1,0 +1,354 @@
+(() => {
+  'use strict';
+
+  const config = window.BASE_AGENDA_CONFIG || {};
+  const apiBase = String(config.apiBaseUrl || '').replace(/\/+$/, '');
+  const privacyUrl = String(config.privacyUrl || '');
+  const demo = !apiBase && new URLSearchParams(window.location.search).get('demo') === '1';
+  const liveReady = Boolean(apiBase && privacyUrl);
+  const zone = 'America/Sao_Paulo';
+  const $ = (selector) => document.querySelector(selector);
+  const state = {
+    month: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    slots: [],
+    selectedDay: '',
+    selectedSlot: null,
+    loading: false,
+    requestId: 0
+  };
+
+  const monthLabel = $('#agenda-month');
+  const daysGrid = $('#agenda-days');
+  const slotsHost = $('#agenda-slots');
+  const notice = $('#agenda-notice');
+  const statusLine = $('#agenda-feedback');
+  const bookingForm = $('#agenda-form');
+  const patientFields = [...bookingForm.querySelectorAll('input')];
+  const privacyCheck = $('#agenda-privacy-check');
+  const submitButton = $('#agenda-submit');
+  const summaryTitle = $('#agenda-summary-title');
+  const summaryDetail = $('#agenda-summary-detail');
+  const qrPanel = $('#agenda-pix');
+  const qrImage = $('#agenda-pix-image');
+  const pixValue = $('#agenda-pix-code');
+  const privacyLink = $('#agenda-privacy-link');
+  const previousMonthButton = $('#agenda-prev');
+  const nextMonthButton = $('#agenda-next');
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const keyFromParts = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+  const monthKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
+  const partsInSaoPaulo = (value) => Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
+  const dayKey = (value) => {
+    const p = partsInSaoPaulo(value);
+    return `${p.year}-${p.month}-${p.day}`;
+  };
+  const displayDate = (value, options = { weekday: 'long', day: 'numeric', month: 'long' }) =>
+    new Intl.DateTimeFormat('pt-BR', { ...options, timeZone: zone }).format(new Date(value));
+  const displayTime = (value) => new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit', minute: '2-digit', timeZone: zone
+  }).format(new Date(value));
+  const sameMonth = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+  const todayKey = dayKey(new Date());
+
+  function updateNotice(text, mode = 'normal') {
+    notice.dataset.mode = mode;
+    notice.textContent = text;
+  }
+
+  function makeDemoSlots(date) {
+    const y = date.getFullYear();
+    const m = date.getMonth();
+    const count = new Date(y, m + 1, 0).getDate();
+    const slots = [];
+    for (let day = 1; day <= count; day += 1) {
+      const d = new Date(y, m, day, 12);
+      const key = keyFromParts(y, m + 1, day);
+      if (key < todayKey || d.getDay() === 0) continue;
+      if ((day + m) % 3 === 0) continue;
+      const times = d.getDay() === 6 ? [['09:00', 1]] : [['09:00', 1], ['14:00', 2]];
+      for (const [time, doctorNumber] of times) {
+        slots.push({
+          id: `DEMO-${key}-${time.replace(':', '')}-${doctorNumber}`,
+          doctorId: `demo-doctor-${doctorNumber}`,
+          doctorName: `Doutora ${doctorNumber} · exemplo`,
+          startsAt: `${key}T${time}:00-03:00`,
+          endsAt: `${key}T${time === '09:00' ? '09:50' : '14:50'}:00-03:00`,
+          status: 'available',
+          isDemo: true
+        });
+      }
+    }
+    return slots;
+  }
+
+  async function fetchAvailability(date) {
+    const id = ++state.requestId;
+    state.loading = true;
+    state.selectedSlot = null;
+    state.slots = [];
+    state.selectedDay = '';
+    statusLine.textContent = '';
+    if (demo) {
+      state.slots = makeDemoSlots(date);
+      state.loading = false;
+      updateNotice('Prévia demonstrativa: nomes e horários são exemplos. Nenhum dado é enviado, nenhum horário é reservado e nenhuma cobrança é feita.', 'demo');
+    } else if (!apiBase) {
+      updateNotice('A agenda real ainda está em configuração. Não mostramos horários fictícios nem coletamos dados até conectar a disponibilidade, o banco e a confirmação Pix.');
+      state.loading = false;
+    } else {
+      updateNotice(privacyUrl
+        ? 'Consultando a disponibilidade da equipe…'
+        : 'A disponibilidade foi preparada, mas é preciso publicar o aviso de privacidade antes de liberar o envio de dados.');
+      try {
+        const first = new Date(date.getFullYear(), date.getMonth(), 1, 12);
+        const last = new Date(date.getFullYear(), date.getMonth() + 1, 0, 12);
+        const from = keyFromParts(first.getFullYear(), first.getMonth() + 1, first.getDate());
+        const to = keyFromParts(last.getFullYear(), last.getMonth() + 1, last.getDate());
+        const response = await fetch(`${apiBase}/availability?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+          method: 'GET', headers: { Accept: 'application/json' }, cache: 'no-store'
+        });
+        if (!response.ok) throw new Error('Não foi possível consultar a agenda.');
+        const data = await response.json();
+        if (id !== state.requestId) return;
+        state.slots = Array.isArray(data.slots)
+          ? data.slots.filter((slot) => slot && slot.status === 'available' && slot.id && slot.startsAt && slot.doctorName)
+          : [];
+        updateNotice(privacyUrl
+          ? 'Selecione um horário realmente disponível. A vaga só é confirmada após a identificação do Pix pelo servidor.'
+          : 'Os horários foram carregados. O envio de dados continua bloqueado até que o aviso de privacidade seja publicado.');
+      } catch (error) {
+        if (id !== state.requestId) return;
+        updateNotice(`${error.message || 'Não conseguimos carregar a agenda.'} Tente novamente mais tarde ou entre em contato com a clínica.`);
+        state.slots = [];
+      } finally {
+        if (id === state.requestId) state.loading = false;
+      }
+    }
+    const nearest = state.slots.map((slot) => dayKey(slot.startsAt)).sort()[0] || '';
+    if (nearest) state.selectedDay = nearest;
+    renderCalendar();
+    renderSlots();
+    updateSummary();
+    updateSubmitState();
+  }
+
+  function renderCalendar() {
+    const year = state.month.getFullYear();
+    const month = state.month.getMonth();
+    monthLabel.textContent = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(state.month);
+    daysGrid.replaceChildren();
+    const offset = new Date(year, month, 1).getDay();
+    const total = new Date(year, month + 1, 0).getDate();
+    for (let blank = 0; blank < offset; blank += 1) {
+      const spacer = document.createElement('span');
+      spacer.setAttribute('aria-hidden', 'true');
+      daysGrid.append(spacer);
+    }
+    const availableDays = new Set(state.slots.map((slot) => dayKey(slot.startsAt)));
+    for (let number = 1; number <= total; number += 1) {
+      const key = keyFromParts(year, month + 1, number);
+      const date = new Date(year, month, number, 12);
+      const hasSlots = availableDays.has(key);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'online-agenda__day';
+      button.textContent = String(number);
+      button.setAttribute('aria-label', `${displayDate(date, { weekday: 'long', day: 'numeric', month: 'long' })}${hasSlots ? ', há horários disponíveis' : ', sem horários disponíveis'}`);
+      button.setAttribute('aria-pressed', String(state.selectedDay === key));
+      if (hasSlots) button.classList.add('has-slots');
+      button.disabled = key < todayKey || !hasSlots || state.loading;
+      button.addEventListener('click', () => {
+        state.selectedDay = key;
+        state.selectedSlot = null;
+        renderCalendar();
+        renderSlots();
+        updateSummary();
+        updateSubmitState();
+      });
+      daysGrid.append(button);
+    }
+    const current = new Date(new Date().getFullYear(), new Date().getMonth(), 1, 12);
+    const lastAllowed = new Date(current.getFullYear(), current.getMonth() + 2, 1, 12);
+    previousMonthButton.disabled = state.loading || state.month <= current;
+    nextMonthButton.disabled = state.loading || state.month >= lastAllowed;
+  }
+
+  function renderSlots() {
+    slotsHost.replaceChildren();
+    const title = document.createElement('p');
+    title.className = 'online-agenda__slots-title';
+    title.textContent = state.selectedDay
+      ? `Horários disponíveis em ${new Intl.DateTimeFormat('pt-BR', { timeZone: zone, day: 'numeric', month: 'long' }).format(new Date(`${state.selectedDay}T12:00:00-03:00`))}`
+      : 'Escolha uma data marcada para ver os horários e a doutora responsável.';
+    slotsHost.append(title);
+
+    const matches = state.slots.filter((slot) => dayKey(slot.startsAt) === state.selectedDay);
+    if (!matches.length) {
+      const empty = document.createElement('p');
+      empty.className = 'online-agenda__empty';
+      empty.textContent = demo
+        ? 'Não há horários de exemplo neste dia. Escolha outra data com um ponto vinho.'
+        : 'Nenhum horário disponível para mostrar neste momento.';
+      slotsHost.append(empty);
+      return;
+    }
+    const list = document.createElement('div');
+    list.className = 'online-agenda__slot-list';
+    for (const slot of matches.sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt))) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'online-agenda__slot';
+      button.setAttribute('aria-pressed', String(state.selectedSlot?.id === slot.id));
+      button.setAttribute('aria-label', `${displayTime(slot.startsAt)}, ${slot.doctorName}${slot.isDemo ? ', exemplo' : ''}`);
+      const time = document.createElement('time');
+      time.dateTime = slot.startsAt;
+      time.textContent = displayTime(slot.startsAt);
+      const doctor = document.createElement('span');
+      doctor.textContent = slot.doctorName;
+      button.append(time, doctor);
+      button.addEventListener('click', () => {
+        state.selectedSlot = slot;
+        renderSlots();
+        updateSummary();
+        updateSubmitState();
+      });
+      list.append(button);
+    }
+    slotsHost.append(list);
+  }
+
+  function updateSummary() {
+    if (!state.selectedSlot) {
+      summaryTitle.textContent = 'Sua consulta começa aqui';
+      summaryDetail.textContent = 'Escolha um horário para ver a doutora, a data e o valor da reserva.';
+      return;
+    }
+    summaryTitle.textContent = displayDate(state.selectedSlot.startsAt);
+    summaryDetail.textContent = `${displayTime(state.selectedSlot.startsAt)} · ${state.selectedSlot.doctorName}`;
+  }
+
+  function updateSubmitState() {
+    const privacyAccepted = privacyCheck.checked;
+    const fieldsReady = bookingForm.checkValidity();
+    submitButton.disabled = !liveReady || !state.selectedSlot || !privacyAccepted || !fieldsReady;
+    for (const field of patientFields) field.disabled = !liveReady;
+    privacyCheck.disabled = !liveReady;
+    if (privacyUrl) {
+      privacyLink.href = privacyUrl;
+      privacyLink.hidden = false;
+    } else {
+      privacyLink.hidden = true;
+    }
+  }
+
+  async function apiJson(endpoint, options = {}) {
+    const response = await fetch(`${apiBase}/${endpoint}`, {
+      method: options.method || 'GET',
+      headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) },
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      cache: 'no-store'
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || 'Não foi possível concluir esta etapa.');
+    return result;
+  }
+
+  async function pollPayment(bookingId, accessToken) {
+    const started = Date.now();
+    const maxWait = 10 * 60 * 1000;
+    while (Date.now() - started < maxWait) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      try {
+        const result = await apiJson('booking-status', {
+          method: 'POST', body: { bookingId, accessToken }
+        });
+        if (result.status === 'confirmed') {
+          qrPanel.hidden = true;
+          statusLine.textContent = `Pagamento recebido. Sua consulta foi confirmada com ${result.doctorName || state.selectedSlot?.doctorName} em ${displayDate(result.startsAt || state.selectedSlot.startsAt)} às ${displayTime(result.startsAt || state.selectedSlot.startsAt)}. Enviaremos uma confirmação ao contato informado.`;
+          return;
+        }
+        if (['expired', 'cancelled', 'payment_failed'].includes(result.status)) {
+          statusLine.textContent = 'Este QR Code não está mais ativo. A vaga foi liberada; escolha outro horário para tentar novamente.';
+          qrPanel.hidden = true;
+          return;
+        }
+        $('#agenda-pix-status').textContent = 'Aguardando a confirmação automática do banco. Não precisa enviar comprovante.';
+      } catch (_error) {
+        $('#agenda-pix-status').textContent = 'Aguardando o retorno seguro da agenda…';
+      }
+    }
+    $('#agenda-pix-status').textContent = 'Ainda não recebemos a confirmação. Consulte a clínica antes de tentar pagar novamente.';
+  }
+
+  bookingForm.addEventListener('input', updateSubmitState);
+  privacyCheck.addEventListener('change', updateSubmitState);
+  previousMonthButton.addEventListener('click', () => {
+    if (previousMonthButton.disabled) return;
+    state.month = new Date(state.month.getFullYear(), state.month.getMonth() - 1, 1, 12);
+    fetchAvailability(state.month);
+  });
+  nextMonthButton.addEventListener('click', () => {
+    if (nextMonthButton.disabled) return;
+    state.month = new Date(state.month.getFullYear(), state.month.getMonth() + 1, 1, 12);
+    fetchAvailability(state.month);
+  });
+  $('#agenda-pix-copy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(pixValue.value);
+      $('#agenda-pix-status').textContent = 'Código Pix copiado.';
+    } catch (_error) {
+      pixValue.focus();
+      pixValue.select();
+      $('#agenda-pix-status').textContent = 'Selecione e copie o código Pix acima.';
+    }
+  });
+
+  bookingForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    updateSubmitState();
+    if (!liveReady || !state.selectedSlot || submitButton.disabled) return;
+    submitButton.disabled = true;
+    statusLine.textContent = 'Protegendo esse horário e solicitando um Pix individual…';
+    qrPanel.hidden = true;
+    const formData = new FormData(bookingForm);
+    try {
+      const result = await apiJson('create-pix', {
+        method: 'POST',
+        body: {
+          slotId: state.selectedSlot.id,
+          fullName: String(formData.get('fullName') || '').trim(),
+          phone: String(formData.get('phone') || '').trim(),
+          email: String(formData.get('email') || '').trim(),
+          acceptedPrivacy: privacyCheck.checked,
+          privacyVersion: config.privacyVersion || ''
+        }
+      });
+      if (!result.bookingId || !result.accessToken || !result.payment) {
+        throw new Error('A resposta da agenda está incompleta. Nenhuma confirmação foi mostrada.');
+      }
+      const image = result.payment.qrCodeDataUrl || (result.payment.qrCodeBase64
+        ? `data:image/png;base64,${result.payment.qrCodeBase64.replace(/^data:image\/png;base64,/, '')}`
+        : '');
+      if (!image || !result.payment.pixCopyPaste) throw new Error('O Pix não retornou um QR Code válido.');
+      qrImage.src = image;
+      qrImage.alt = 'QR Code Pix individual para esta reserva';
+      pixValue.value = result.payment.pixCopyPaste;
+      $('#agenda-pix-status').textContent = result.expiresAt
+        ? `QR Code válido até ${displayDate(result.expiresAt, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. A confirmação chega automaticamente.`
+        : 'Aguardando a confirmação automática do banco. Não precisa enviar comprovante.';
+      qrPanel.hidden = false;
+      statusLine.textContent = 'Horário reservado temporariamente enquanto aguarda o Pix.';
+      await pollPayment(result.bookingId, result.accessToken);
+    } catch (error) {
+      statusLine.textContent = error.message || 'Não foi possível iniciar a reserva. Atualize os horários e tente de novo.';
+    } finally {
+      updateSubmitState();
+    }
+  });
+
+  if (demo) document.querySelector('.online-agenda').classList.add('online-agenda--demo');
+  fetchAvailability(state.month);
+})();
