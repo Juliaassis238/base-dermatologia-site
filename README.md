@@ -1,10 +1,10 @@
-# Base Dermatologia — landing page
+# Base Dermatologia — site institucional
 
-Página institucional estática em HTML, CSS e JavaScript, com imagens incorporadas no próprio arquivo `index.html`.
+Site estático, responsivo e acessível, feito em HTML, CSS e JavaScript. As imagens editoriais ficam em `images/` como arquivos WebP otimizados; não há imagens de consultório nem rostos completos.
 
 ## Visualização local
 
-Abra `index.html` diretamente no navegador ou inicie um servidor local:
+Na pasta do projeto, inicie um servidor local:
 
 ```bash
 python3 -m http.server 8000
@@ -12,13 +12,9 @@ python3 -m http.server 8000
 
 Depois acesse <http://localhost:8000>.
 
-## Antes de reutilizar/publicar o site
+## Antes da publicação final
 
-Revise e substitua os dados demonstrativos ou confirme que estão corretos:
+- O número de WhatsApp ainda não foi fornecido; os botões levam às informações de agendamento e não apontam para um número fictício.
+- Confirme o endereço, os valores, as formas de pagamento e as políticas de agendamento antes de divulgar.
 
-- Número de WhatsApp definido no JavaScript (`5511900000000`);
-- Nome da segunda dermatologista (`[Nome da sócia]`);
-- Números de CRM e RQE (`00000`);
-- Endereço, valores, formas de pagamento e políticas de agendamento.
-
-As fontes tipográficas são carregadas do Google Fonts e o mapa usa o Google Maps.
+As fontes tipográficas são carregadas do Google Fonts e o mapa usa o Google Maps. O site não precisa de etapa de build.
