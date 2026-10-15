@@ -10,8 +10,15 @@
   const liveReady = Boolean(apiBase && privacyUrl && privacyVersion && anonKey);
   const zone = 'America/Sao_Paulo';
   const $ = (selector) => document.querySelector(selector);
+  const configuredStartDate = String(config.firstAvailableDate || '');
+  const configuredMonth = /^\d{4}-\d{2}-\d{2}$/.test(configuredStartDate)
+    ? new Date(`${configuredStartDate}T12:00:00-03:00`)
+    : new Date();
+  const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1, 12);
+  const configuredStartMonth = new Date(configuredMonth.getFullYear(), configuredMonth.getMonth(), 1, 12);
+  const initialMonth = configuredStartMonth > currentMonth ? configuredStartMonth : currentMonth;
   const state = {
-    month: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    month: initialMonth,
     slots: [],
     selectedDay: '',
     selectedSlot: null,
@@ -31,6 +38,9 @@
   const summaryTitle = $('#agenda-summary-title');
   const summaryDetail = $('#agenda-summary-detail');
   const privacyLink = $('#agenda-privacy-link');
+  const cpfField = $('#agenda-cpf');
+  const postalCodeField = $('#agenda-postal-code');
+  const stateField = $('#agenda-state');
   const previousMonthButton = $('#agenda-prev');
   const nextMonthButton = $('#agenda-next');
 
@@ -49,6 +59,29 @@
   const displayTime = (value) => new Intl.DateTimeFormat('pt-BR', {
     hour: '2-digit', minute: '2-digit', timeZone: zone
   }).format(new Date(value));
+  const digitsOnly = (value) => String(value || '').replace(/\D/g, '');
+  const formatCpf = (value) => {
+    const digits = digitsOnly(value).slice(0, 11);
+    if (digits.length > 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    if (digits.length > 6) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    if (digits.length > 3) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    return digits;
+  };
+  const formatPostalCode = (value) => {
+    const digits = digitsOnly(value).slice(0, 8);
+    return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+  };
+  function isValidCpf(value) {
+    const cpf = digitsOnly(value);
+    if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
+    const checkDigit = (length) => {
+      let sum = 0;
+      for (let index = 0; index < length; index += 1) sum += Number(cpf[index]) * (length + 1 - index);
+      const digit = (sum * 10) % 11;
+      return digit === 10 ? 0 : digit;
+    };
+    return checkDigit(9) === Number(cpf[9]) && checkDigit(10) === Number(cpf[10]);
+  }
   const sameMonth = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
   const todayKey = dayKey(new Date());
 
@@ -107,7 +140,11 @@
         const from = keyFromParts(first.getFullYear(), first.getMonth() + 1, first.getDate());
         const to = keyFromParts(last.getFullYear(), last.getMonth() + 1, last.getDate());
         const response = await fetch(`${apiBase}/availability?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
-          method: 'GET', headers: { Accept: 'application/json' }, cache: 'no-store'
+          method: 'GET', headers: {
+            Accept: 'application/json',
+            apikey: anonKey,
+            Authorization: `Bearer ${anonKey}`
+          }, cache: 'no-store'
         });
         if (!response.ok) throw new Error('Não foi possível consultar a agenda.');
         const data = await response.json();
@@ -118,7 +155,7 @@
         if (!privacyUrl) {
           updateNotice('Os horários foram carregados. O envio de dados continua bloqueado até que o aviso de privacidade seja publicado.');
         } else if (!state.slots.length) {
-          updateNotice('A agenda está conectada, mas ainda não há horários reais publicados. Eles aparecerão assim que a clínica cadastrar a disponibilidade.');
+          updateNotice('A agenda recorrente começa em 17/11/2026. Se não houver vagas neste mês, navegue para outro mês ou fale com a clínica.');
         } else {
           updateNotice('Selecione um horário realmente disponível. Nesta primeira fase, a reserva é confirmada sem cobrança.');
         }
@@ -266,6 +303,20 @@
 
   bookingForm.addEventListener('input', updateSubmitState);
   privacyCheck.addEventListener('change', updateSubmitState);
+  cpfField.addEventListener('input', () => {
+    cpfField.value = formatCpf(cpfField.value);
+    const cpf = digitsOnly(cpfField.value);
+    cpfField.setCustomValidity(cpf.length === 11 && !isValidCpf(cpf) ? 'Informe um CPF válido.' : '');
+    updateSubmitState();
+  });
+  postalCodeField.addEventListener('input', () => {
+    postalCodeField.value = formatPostalCode(postalCodeField.value);
+    updateSubmitState();
+  });
+  stateField.addEventListener('input', () => {
+    stateField.value = stateField.value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 2);
+    updateSubmitState();
+  });
   previousMonthButton.addEventListener('click', () => {
     if (previousMonthButton.disabled) return;
     state.month = new Date(state.month.getFullYear(), state.month.getMonth() - 1, 1, 12);
@@ -292,6 +343,16 @@
           fullName: String(formData.get('fullName') || '').trim(),
           phone: String(formData.get('phone') || '').trim(),
           email: String(formData.get('email') || '').trim(),
+          cpf: digitsOnly(formData.get('cpf')),
+          address: {
+            line: String(formData.get('addressLine') || '').trim(),
+            number: String(formData.get('addressNumber') || '').trim(),
+            complement: String(formData.get('addressComplement') || '').trim(),
+            neighborhood: String(formData.get('addressNeighborhood') || '').trim(),
+            city: String(formData.get('addressCity') || '').trim(),
+            state: String(formData.get('addressState') || '').trim().toUpperCase(),
+            postalCode: digitsOnly(formData.get('addressPostalCode'))
+          },
           acceptedPrivacy: privacyCheck.checked,
           privacyVersion,
           website: String(formData.get('website') || '')

@@ -1,6 +1,6 @@
 # Base Dermatologia — site institucional
 
-Site estático, responsivo e acessível, feito em HTML, CSS e JavaScript. O site é publicado pelo GitHub Pages; a agenda usa um projeto Supabase separado para armazenar disponibilidade e reservas.
+Site estático, responsivo e acessível, feito em HTML, CSS e JavaScript. Publicado pelo GitHub Pages; a agenda usa um projeto Supabase para armazenar horários e reservas.
 
 ## Contato
 
@@ -8,9 +8,11 @@ WhatsApp da clínica: [+55 11 92742-0834](https://wa.me/5511927420834).
 
 ## Agenda online
 
-A Edge Function Supabase `agenda` consulta horários e grava reservas com proteção contra dupla marcação. A fase atual confirma a reserva **sem pagamento**. O banco está preparado para a integração futura com Checkout/InfinitePay, mas nenhum pagamento é processado ainda.
+A agenda está configurada para as terças-feiras a partir de 17/11/2026: Jéssica Saab, das 9h às 13h; Mariana Gil Furlanetti, das 14h às 18h. Cada consulta dura 30 minutos. A reserva nesta fase é confirmada sem pagamento; InfinitePay ainda não está conectada.
 
-A agenda não mostra horários até que a clínica cadastre dias, horários, duração e intervalos reais de atendimento. Não foram criadas disponibilidades ou reservas fictícias. Consulte [INTEGRACAO-AGENDA.md](./INTEGRACAO-AGENDA.md) para o estado e os passos de configuração. O aviso público inicial está em [privacidade.html](./privacidade.html) e deve ser revisto pela clínica.
+O formulário pede nome, telefone, e-mail, CPF e endereço completo para a emissão da nota fiscal. O aviso de privacidade foi atualizado para explicar esse uso. O calendário gera os horários do mês consultado e permite navegar pelo mês atual e os dois seguintes. Ainda não há notificações automáticas para a clínica; reservas ficam no painel Supabase.
+
+Consulte [INTEGRACAO-AGENDA.md](./INTEGRACAO-AGENDA.md) para detalhes e próximos passos.
 
 ## Visualização local
 
@@ -21,13 +23,5 @@ python3 -m http.server 8000
 ```
 
 Depois acesse <http://localhost:8000>.
-
-## Antes de abrir a agenda ao público
-
-- Confirmar a disponibilidade real de cada profissional.
-- Revisar o aviso de privacidade e confirmar o responsável e o canal de contato.
-- Definir se a reserva sem pagamento continuará sendo confirmada imediatamente.
-- Configurar notificações se a clínica quiser recebê-las por e-mail ou WhatsApp.
-- Antes de ativar InfinitePay, confirmar o valor do sinal e testar checkout e webhook.
 
 As fontes tipográficas são carregadas do Google Fonts e o mapa usa o Google Maps. O site não precisa de etapa de build.

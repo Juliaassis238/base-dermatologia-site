@@ -131,13 +131,27 @@
               <label>Nome completo<input name="fullName" type="text" placeholder="Seu nome e sobrenome" autocomplete="name" minlength="2" maxlength="120" required disabled></label>
               <label>Celular com WhatsApp<input name="phone" type="tel" placeholder="(11) 99999-9999" autocomplete="tel" minlength="8" maxlength="22" required disabled></label>
               <label>E-mail<input name="email" type="email" placeholder="voce@email.com" autocomplete="email" maxlength="254" required disabled></label>
+              <label>CPF para emissão da nota fiscal<input id="agenda-cpf" name="cpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" maxlength="14" required disabled></label>
+              <div class="online-agenda__field-row">
+                <label>CEP<input id="agenda-postal-code" name="addressPostalCode" type="text" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" maxlength="9" required disabled></label>
+                <label>Estado (UF)<input id="agenda-state" name="addressState" type="text" autocomplete="address-level1" placeholder="SP" minlength="2" maxlength="2" required disabled></label>
+              </div>
+              <label>Rua ou avenida<input name="addressLine" type="text" autocomplete="address-line1" placeholder="Logradouro" minlength="2" maxlength="160" required disabled></label>
+              <div class="online-agenda__field-row">
+                <label>Número<input name="addressNumber" type="text" autocomplete="off" placeholder="Nº" maxlength="20" required disabled></label>
+                <label>Complemento (opcional)<input name="addressComplement" type="text" autocomplete="address-line2" placeholder="Apto., sala…" maxlength="100" disabled></label>
+              </div>
+              <div class="online-agenda__field-row">
+                <label>Bairro<input name="addressNeighborhood" type="text" autocomplete="address-level3" maxlength="80" required disabled></label>
+                <label>Cidade<input name="addressCity" type="text" autocomplete="address-level2" maxlength="80" required disabled></label>
+              </div>
               <input name="website" type="text" autocomplete="off" tabindex="-1" aria-hidden="true" hidden>
-              <label class="online-agenda__privacy"><input id="agenda-privacy-check" name="acceptedPrivacy" type="checkbox" required disabled><span>Li o aviso de privacidade e estou ciente do uso dos meus dados de contato para gerenciar esta consulta. <a id="agenda-privacy-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Leia o aviso de privacidade</a></span></label>
+              <label class="online-agenda__privacy"><input id="agenda-privacy-check" name="acceptedPrivacy" type="checkbox" required disabled><span>Li o aviso de privacidade e compreendi que meus dados de contato, CPF e endereço serão usados para administrar a consulta e emitir a nota fiscal. <a id="agenda-privacy-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Leia o aviso de privacidade</a></span></label>
               <button class="btn online-agenda__submit" id="agenda-submit" type="submit" disabled>Confirmar agendamento <svg class="icon"><use href="#i-arrow"/></svg></button>
-              <p class="online-agenda__fineprint">Nesta etapa, o agendamento não tem cobrança. O pagamento pela InfinitePay será conectado depois. A consulta custa R$ 250,00. Não informe sintomas neste formulário.</p>
+              <p class="online-agenda__fineprint">Nesta etapa, o agendamento não tem cobrança. O pagamento pela InfinitePay será conectado depois. A consulta custa R$ 250,00. CPF e endereço são solicitados para a nota fiscal; não informe sintomas neste formulário.</p>
               <p class="online-agenda__feedback" id="agenda-feedback" role="status" aria-live="polite"></p>
             </form>
-            <p class="online-agenda__privacy-note">A agenda só exibirá horários depois que a clínica cadastrar a disponibilidade real. Quando a InfinitePay for conectada, a confirmação poderá depender da aprovação do pagamento.</p>
+            <p class="online-agenda__privacy-note">Atendimentos às terças-feiras a partir de 17/11/2026: Jéssica, das 9h às 13h; Mariana, das 14h às 18h. Nesta fase a reserva é confirmada sem cobrança. Quando a InfinitePay for conectada, a confirmação poderá depender da aprovação do pagamento.</p>
           </div>
         </div>
       </div>
