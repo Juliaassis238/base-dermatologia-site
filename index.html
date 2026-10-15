@@ -110,8 +110,8 @@
           <div><span class="eyebrow">Agendamento online</span><h2 id="agenda-title">Seu próximo cuidado, com data marcada.</h2></div>
           <p class="online-agenda__intro"><img class="online-agenda__mascot" src="./images/mascote-gota-dermatologia.webp" alt="Mascote gotinha de skincare da Base Dermatologia" width="1000" height="1333" loading="lazy">Uma agenda clara, horários associados a cada doutora e confirmação organizada para você.</p>
         </div>
-        <div class="online-agenda__notice" id="agenda-notice" role="status" aria-live="polite">A agenda real ainda está em configuração. Não mostramos horários fictícios nem coletamos dados até conectar a disponibilidade, o banco e a confirmação Pix.</div>
-        <ol class="online-agenda__steps" aria-label="Etapas para reservar uma consulta"><li><b>1</b> Consulte os horários</li><li><b>2</b> Informe seus dados</li><li><b>3</b> Confirme com Pix</li></ol>
+        <div class="online-agenda__notice" id="agenda-notice" role="status" aria-live="polite">A agenda está conectada. Os horários reais serão exibidos assim que a clínica cadastrar a disponibilidade. Nesta primeira fase, a reserva não exige pagamento.</div>
+        <ol class="online-agenda__steps" aria-label="Etapas para reservar uma consulta"><li><b>1</b> Consulte os horários</li><li><b>2</b> Informe seus dados</li><li><b>3</b> Confirme sem cobrança</li></ol>
         <div class="online-agenda__layout">
           <div class="online-agenda__calendar-card">
             <div class="online-agenda__card-heading"><div><h3>Consulta e calendário</h3><p>As vagas abertas mostram o horário e a doutora que fará a consulta.</p></div></div>
@@ -125,26 +125,19 @@
             <div class="online-agenda__slots" id="agenda-slots" aria-live="polite"><p class="online-agenda__empty">Escolha uma data marcada para consultar os horários disponíveis.</p></div>
           </div>
           <div class="online-agenda__patient-card">
-            <div class="online-agenda__card-heading"><div><h3>Confirmar a reserva</h3><p>O horário fica temporariamente reservado durante a confirmação do Pix.</p></div></div>
-            <div class="online-agenda__summary" aria-live="polite"><span>Consulta selecionada</span><strong id="agenda-summary-title">Sua consulta começa aqui</strong><small id="agenda-summary-detail">Escolha um horário para ver a doutora, a data e o valor da reserva.</small></div>
+            <div class="online-agenda__card-heading"><div><h3>Confirmar a reserva</h3><p>Nesta primeira fase, o horário é confirmado sem cobrança.</p></div></div>
+            <div class="online-agenda__summary" aria-live="polite"><span>Consulta selecionada</span><strong id="agenda-summary-title">Sua consulta começa aqui</strong><small id="agenda-summary-detail">Escolha um horário para ver a doutora, a data e o valor total da consulta.</small></div>
             <form class="online-agenda__form" id="agenda-form" novalidate>
               <label>Nome completo<input name="fullName" type="text" placeholder="Seu nome e sobrenome" autocomplete="name" minlength="2" maxlength="120" required disabled></label>
               <label>Celular com WhatsApp<input name="phone" type="tel" placeholder="(11) 99999-9999" autocomplete="tel" minlength="8" maxlength="22" required disabled></label>
               <label>E-mail<input name="email" type="email" placeholder="voce@email.com" autocomplete="email" maxlength="254" required disabled></label>
-              <label class="online-agenda__privacy"><input id="agenda-privacy-check" name="acceptedPrivacy" type="checkbox" required disabled><span>Autorizo o uso dos meus dados somente para solicitar e confirmar esta consulta. <a id="agenda-privacy-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Leia o aviso de privacidade</a></span></label>
-              <button class="btn online-agenda__submit" id="agenda-submit" type="submit" disabled>Reservar com Pix <svg class="icon"><use href="#i-arrow"/></svg></button>
-              <p class="online-agenda__fineprint">Para agendar, R$ 125,00 via Pix; os R$ 125,00 restantes são pagos no dia da consulta. Não informe sintomas neste formulário.</p>
+              <input name="website" type="text" autocomplete="off" tabindex="-1" aria-hidden="true" hidden>
+              <label class="online-agenda__privacy"><input id="agenda-privacy-check" name="acceptedPrivacy" type="checkbox" required disabled><span>Li o aviso de privacidade e estou ciente do uso dos meus dados de contato para gerenciar esta consulta. <a id="agenda-privacy-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Leia o aviso de privacidade</a></span></label>
+              <button class="btn online-agenda__submit" id="agenda-submit" type="submit" disabled>Confirmar agendamento <svg class="icon"><use href="#i-arrow"/></svg></button>
+              <p class="online-agenda__fineprint">Nesta etapa, o agendamento não tem cobrança. O pagamento pela InfinitePay será conectado depois. A consulta custa R$ 250,00. Não informe sintomas neste formulário.</p>
               <p class="online-agenda__feedback" id="agenda-feedback" role="status" aria-live="polite"></p>
             </form>
-            <div class="online-agenda__pix" id="agenda-pix" hidden>
-              <h4>Pix da sua consulta</h4><p class="online-agenda__fineprint">Use este QR Code individual. A confirmação vem do banco — não envie comprovantes.</p>
-              <img id="agenda-pix-image" alt="QR Code Pix individual da reserva" width="240" height="240">
-              <label class="online-agenda__fineprint" for="agenda-pix-code">Pix copia e cola</label>
-              <textarea id="agenda-pix-code" readonly aria-label="Código Pix copia e cola"></textarea>
-              <button class="btn btn--outline online-agenda__pix-copy" type="button" id="agenda-pix-copy">Copiar código Pix</button>
-              <p class="online-agenda__pix-status" id="agenda-pix-status" aria-live="polite"></p>
-            </div>
-            <p class="online-agenda__privacy-note">A agenda só será ativada depois da configuração de horários reais, proteção dos dados e processamento seguro do pagamento.</p>
+            <p class="online-agenda__privacy-note">A agenda só exibirá horários depois que a clínica cadastrar a disponibilidade real. Quando a InfinitePay for conectada, a confirmação poderá depender da aprovação do pagamento.</p>
           </div>
         </div>
       </div>

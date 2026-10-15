@@ -5,7 +5,9 @@
   const apiBase = String(config.apiBaseUrl || '').replace(/\/+$/, '');
   const privacyUrl = String(config.privacyUrl || '');
   const demo = !apiBase && new URLSearchParams(window.location.search).get('demo') === '1';
-  const liveReady = Boolean(apiBase && privacyUrl);
+  const anonKey = String(config.anonKey || '');
+  const privacyVersion = String(config.privacyVersion || '');
+  const liveReady = Boolean(apiBase && privacyUrl && privacyVersion && anonKey);
   const zone = 'America/Sao_Paulo';
   const $ = (selector) => document.querySelector(selector);
   const state = {
@@ -28,9 +30,6 @@
   const submitButton = $('#agenda-submit');
   const summaryTitle = $('#agenda-summary-title');
   const summaryDetail = $('#agenda-summary-detail');
-  const qrPanel = $('#agenda-pix');
-  const qrImage = $('#agenda-pix-image');
-  const pixValue = $('#agenda-pix-code');
   const privacyLink = $('#agenda-privacy-link');
   const previousMonthButton = $('#agenda-prev');
   const nextMonthButton = $('#agenda-next');
@@ -96,7 +95,7 @@
       state.loading = false;
       updateNotice('Prévia demonstrativa: nomes e horários são exemplos. Nenhum dado é enviado, nenhum horário é reservado e nenhuma cobrança é feita.', 'demo');
     } else if (!apiBase) {
-      updateNotice('A agenda real ainda está em configuração. Não mostramos horários fictícios nem coletamos dados até conectar a disponibilidade, o banco e a confirmação Pix.');
+      updateNotice('A agenda está sendo configurada. Não mostramos horários fictícios nem coletamos dados sem uma disponibilidade real.');
       state.loading = false;
     } else {
       updateNotice(privacyUrl
@@ -116,9 +115,13 @@
         state.slots = Array.isArray(data.slots)
           ? data.slots.filter((slot) => slot && slot.status === 'available' && slot.id && slot.startsAt && slot.doctorName)
           : [];
-        updateNotice(privacyUrl
-          ? 'Selecione um horário realmente disponível. A vaga só é confirmada após a identificação do Pix pelo servidor.'
-          : 'Os horários foram carregados. O envio de dados continua bloqueado até que o aviso de privacidade seja publicado.');
+        if (!privacyUrl) {
+          updateNotice('Os horários foram carregados. O envio de dados continua bloqueado até que o aviso de privacidade seja publicado.');
+        } else if (!state.slots.length) {
+          updateNotice('A agenda está conectada, mas ainda não há horários reais publicados. Eles aparecerão assim que a clínica cadastrar a disponibilidade.');
+        } else {
+          updateNotice('Selecione um horário realmente disponível. Nesta primeira fase, a reserva é confirmada sem cobrança.');
+        }
       } catch (error) {
         if (id !== state.requestId) return;
         updateNotice(`${error.message || 'Não conseguimos carregar a agenda.'} Tente novamente mais tarde ou entre em contato com a clínica.`);
@@ -245,42 +248,20 @@
   }
 
   async function apiJson(endpoint, options = {}) {
-    const response = await fetch(`${apiBase}/${endpoint}`, {
+      const response = await fetch(`${apiBase}/${endpoint}`, {
       method: options.method || 'GET',
-      headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) },
+      headers: {
+        Accept: 'application/json',
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+        ...(options.body ? { 'Content-Type': 'application/json' } : {})
+      },
       body: options.body ? JSON.stringify(options.body) : undefined,
       cache: 'no-store'
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.message || 'Não foi possível concluir esta etapa.');
     return result;
-  }
-
-  async function pollPayment(bookingId, accessToken) {
-    const started = Date.now();
-    const maxWait = 10 * 60 * 1000;
-    while (Date.now() - started < maxWait) {
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      try {
-        const result = await apiJson('booking-status', {
-          method: 'POST', body: { bookingId, accessToken }
-        });
-        if (result.status === 'confirmed') {
-          qrPanel.hidden = true;
-          statusLine.textContent = `Pagamento recebido. Sua consulta foi confirmada com ${result.doctorName || state.selectedSlot?.doctorName} em ${displayDate(result.startsAt || state.selectedSlot.startsAt)} às ${displayTime(result.startsAt || state.selectedSlot.startsAt)}. Enviaremos uma confirmação ao contato informado.`;
-          return;
-        }
-        if (['expired', 'cancelled', 'payment_failed'].includes(result.status)) {
-          statusLine.textContent = 'Este QR Code não está mais ativo. A vaga foi liberada; escolha outro horário para tentar novamente.';
-          qrPanel.hidden = true;
-          return;
-        }
-        $('#agenda-pix-status').textContent = 'Aguardando a confirmação automática do banco. Não precisa enviar comprovante.';
-      } catch (_error) {
-        $('#agenda-pix-status').textContent = 'Aguardando o retorno seguro da agenda…';
-      }
-    }
-    $('#agenda-pix-status').textContent = 'Ainda não recebemos a confirmação. Consulte a clínica antes de tentar pagar novamente.';
   }
 
   bookingForm.addEventListener('input', updateSubmitState);
@@ -295,53 +276,34 @@
     state.month = new Date(state.month.getFullYear(), state.month.getMonth() + 1, 1, 12);
     fetchAvailability(state.month);
   });
-  $('#agenda-pix-copy').addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(pixValue.value);
-      $('#agenda-pix-status').textContent = 'Código Pix copiado.';
-    } catch (_error) {
-      pixValue.focus();
-      pixValue.select();
-      $('#agenda-pix-status').textContent = 'Selecione e copie o código Pix acima.';
-    }
-  });
-
   bookingForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     updateSubmitState();
     if (!liveReady || !state.selectedSlot || submitButton.disabled) return;
     submitButton.disabled = true;
-    statusLine.textContent = 'Protegendo esse horário e solicitando um Pix individual…';
-    qrPanel.hidden = true;
+    statusLine.textContent = 'Confirmando a disponibilidade desse horário…';
     const formData = new FormData(bookingForm);
+    const selectedSlot = state.selectedSlot;
     try {
-      const result = await apiJson('create-pix', {
+      const result = await apiJson('book-appointment', {
         method: 'POST',
         body: {
-          slotId: state.selectedSlot.id,
+          slotId: selectedSlot.id,
           fullName: String(formData.get('fullName') || '').trim(),
           phone: String(formData.get('phone') || '').trim(),
           email: String(formData.get('email') || '').trim(),
           acceptedPrivacy: privacyCheck.checked,
-          privacyVersion: config.privacyVersion || ''
+          privacyVersion,
+          website: String(formData.get('website') || '')
         }
       });
-      if (!result.bookingId || !result.accessToken || !result.payment) {
-        throw new Error('A resposta da agenda está incompleta. Nenhuma confirmação foi mostrada.');
+      if (!result.bookingId || result.status !== 'confirmed' || result.paymentRequired !== false) {
+        throw new Error('A agenda não confirmou a reserva. Atualize os horários antes de tentar novamente.');
       }
-      const image = result.payment.qrCodeDataUrl || (result.payment.qrCodeBase64
-        ? `data:image/png;base64,${result.payment.qrCodeBase64.replace(/^data:image\/png;base64,/, '')}`
-        : '');
-      if (!image || !result.payment.pixCopyPaste) throw new Error('O Pix não retornou um QR Code válido.');
-      qrImage.src = image;
-      qrImage.alt = 'QR Code Pix individual para esta reserva';
-      pixValue.value = result.payment.pixCopyPaste;
-      $('#agenda-pix-status').textContent = result.expiresAt
-        ? `QR Code válido até ${displayDate(result.expiresAt, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. A confirmação chega automaticamente.`
-        : 'Aguardando a confirmação automática do banco. Não precisa enviar comprovante.';
-      qrPanel.hidden = false;
-      statusLine.textContent = 'Horário reservado temporariamente enquanto aguarda o Pix.';
-      await pollPayment(result.bookingId, result.accessToken);
+      const confirmation = `Agendamento confirmado para ${displayDate(selectedSlot.startsAt)} às ${displayTime(selectedSlot.startsAt)} com ${selectedSlot.doctorName}. Nesta fase não há cobrança. Código: ${String(result.bookingId).slice(0, 8).toUpperCase()}.`;
+      bookingForm.reset();
+      await fetchAvailability(state.month);
+      statusLine.textContent = confirmation;
     } catch (error) {
       statusLine.textContent = error.message || 'Não foi possível iniciar a reserva. Atualize os horários e tente de novo.';
     } finally {
