@@ -38,6 +38,12 @@
   const summaryTitle = $('#agenda-summary-title');
   const summaryDetail = $('#agenda-summary-detail');
   const privacyLink = $('#agenda-privacy-link');
+  const paymentPanel = $('#agenda-payment');
+  const paymentDetail = $('#agenda-payment-detail');
+  const paymentQr = $('#agenda-payment-qr');
+  const whatsappLink = $('#agenda-whatsapp-link');
+  const proofSentButton = $('#agenda-proof-sent');
+  const paymentStatus = $('#agenda-payment-status');
   const cpfField = $('#agenda-cpf');
   const postalCodeField = $('#agenda-postal-code');
   const stateField = $('#agenda-state');
@@ -157,7 +163,7 @@
         } else if (!state.slots.length) {
           updateNotice('A agenda recorrente começa em 17/11/2026. Se não houver vagas neste mês, navegue para outro mês ou fale com a clínica.');
         } else {
-          updateNotice('Selecione um horário realmente disponível. Nesta primeira fase, a reserva é confirmada sem cobrança.');
+          updateNotice('Selecione um horário realmente disponível. A vaga fica pendente até o pagamento Pix ser conferido pela clínica.');
         }
       } catch (error) {
         if (id !== state.requestId) return;
@@ -301,6 +307,32 @@
     return result;
   }
 
+  function showPixInstructions(result, selectedSlot, patientName) {
+    const doctorName = String(result.doctorName || selectedSlot.doctorName || '');
+    const qrImage = /j[eé]ssica/i.test(doctorName)
+      ? './images/pix-jessica.png'
+      : /mariana/i.test(doctorName) ? './images/pix-mariana.png' : '';
+    if (!qrImage || Number(result.amountCents) !== 12500) {
+      paymentStatus.textContent = 'A reserva foi criada, mas não conseguimos identificar com segurança o QR da profissional. Não pague por outro código; fale com a clínica pelo WhatsApp.';
+      paymentPanel.hidden = false;
+      paymentQr.hidden = true;
+      return;
+    }
+    const appointmentTime = result.startsAt || selectedSlot.startsAt;
+    const appointmentDate = displayDate(appointmentTime);
+    const appointmentHour = displayTime(appointmentTime);
+    const reference = String(result.bookingId).slice(0, 8).toUpperCase();
+    const firstName = String(patientName || '').trim().split(/\s+/)[0] || 'Olá';
+    paymentQr.src = qrImage;
+    paymentQr.alt = `QR Code Pix de ${doctorName} para o sinal de R$ 125,00`;
+    paymentQr.hidden = false;
+    paymentDetail.textContent = `${doctorName} · ${appointmentDate}, às ${appointmentHour} · código ${reference}. A vaga fica pendente enquanto aguardamos o pagamento.`;
+    const message = `Olá, Base Dermatologia! Enviei o Pix de R$ 125,00 para solicitar minha consulta.\nNome: ${firstName}\nProfissional: ${doctorName}\nData e horário: ${appointmentDate}, às ${appointmentHour}\nCódigo: ${reference}\nVou anexar o comprovante.`;
+    whatsappLink.href = `https://wa.me/${result.whatsappNumber || '5511927420834'}?text=${encodeURIComponent(message)}`;
+    paymentStatus.textContent = `Aguardando o pagamento e a conferência da clínica. A vaga expira às ${displayTime(result.holdExpiresAt)} se o pagamento ainda não tiver sido enviado.`;
+    paymentPanel.hidden = false;
+  }
+
   bookingForm.addEventListener('input', updateSubmitState);
   privacyCheck.addEventListener('change', updateSubmitState);
   cpfField.addEventListener('input', () => {
@@ -332,7 +364,7 @@
     updateSubmitState();
     if (!liveReady || !state.selectedSlot || submitButton.disabled) return;
     submitButton.disabled = true;
-    statusLine.textContent = 'Confirmando a disponibilidade desse horário…';
+    statusLine.textContent = 'Criando sua solicitação pendente…';
     const formData = new FormData(bookingForm);
     const selectedSlot = state.selectedSlot;
     try {
@@ -358,17 +390,40 @@
           website: String(formData.get('website') || '')
         }
       });
-      if (!result.bookingId || result.status !== 'confirmed' || result.paymentRequired !== false) {
-        throw new Error('A agenda não confirmou a reserva. Atualize os horários antes de tentar novamente.');
+      if (!result.bookingId || result.status !== 'pending_payment' || result.paymentRequired !== true) {
+        throw new Error('A solicitação não foi criada. Atualize os horários antes de tentar novamente.');
       }
-      const confirmation = `Agendamento confirmado para ${displayDate(selectedSlot.startsAt)} às ${displayTime(selectedSlot.startsAt)} com ${selectedSlot.doctorName}. Nesta fase não há cobrança. Código: ${String(result.bookingId).slice(0, 8).toUpperCase()}.`;
+      const patientName = String(formData.get('fullName') || '').trim();
+      paymentPanel.dataset.bookingId = String(result.bookingId);
+      paymentPanel.dataset.accessToken = String(result.accessToken || '');
       bookingForm.reset();
+      bookingForm.hidden = true;
       await fetchAvailability(state.month);
-      statusLine.textContent = confirmation;
+      showPixInstructions(result, selectedSlot, patientName);
+      statusLine.textContent = 'Solicitação criada. O horário ainda não está confirmado.';
     } catch (error) {
       statusLine.textContent = error.message || 'Não foi possível iniciar a reserva. Atualize os horários e tente de novo.';
     } finally {
       updateSubmitState();
+    }
+  });
+
+  proofSentButton.addEventListener('click', async () => {
+    const bookingId = paymentPanel.dataset.bookingId || '';
+    const accessToken = paymentPanel.dataset.accessToken || '';
+    if (!bookingId || !accessToken || proofSentButton.disabled) return;
+    proofSentButton.disabled = true;
+    paymentStatus.textContent = 'Registrando o aviso de envio…';
+    try {
+      const result = await apiJson('mark-proof-sent', {
+        method: 'POST',
+        body: { bookingId, accessToken }
+      });
+      paymentStatus.textContent = result.message || 'Envio registrado. A consulta só será confirmada depois da conferência do Pix pela clínica.';
+      proofSentButton.textContent = 'Comprovante marcado como enviado';
+    } catch (error) {
+      paymentStatus.textContent = error.message || 'Não conseguimos atualizar o aviso de envio. Fale com a clínica pelo WhatsApp.';
+      proofSentButton.disabled = false;
     }
   });
 

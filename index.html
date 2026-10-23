@@ -110,14 +110,14 @@
           <div><span class="eyebrow">Agendamento online</span><h2 id="agenda-title">Seu próximo cuidado, com data marcada.</h2></div>
           <p class="online-agenda__intro"><img class="online-agenda__mascot" src="./images/mascote-gota-dermatologia.webp" alt="Mascote gotinha de skincare da Base Dermatologia" width="1000" height="1333" loading="lazy">Uma agenda clara, horários associados a cada doutora e confirmação organizada para você.</p>
         </div>
-        <div class="online-agenda__notice" id="agenda-notice" role="status" aria-live="polite">A agenda está conectada. Os horários reais serão exibidos assim que a clínica cadastrar a disponibilidade. Nesta primeira fase, a reserva não exige pagamento.</div>
-        <ol class="online-agenda__steps" aria-label="Etapas para reservar uma consulta"><li><b>1</b> Consulte os horários</li><li><b>2</b> Informe seus dados</li><li><b>3</b> Confirme sem cobrança</li></ol>
+        <div class="online-agenda__notice" id="agenda-notice" role="status" aria-live="polite">Escolha um horário, pague o sinal Pix de R$ 125,00 e envie o comprovante pelo WhatsApp. A consulta só será confirmada depois da conferência pela clínica.</div>
+        <ol class="online-agenda__steps" aria-label="Etapas para reservar uma consulta"><li><b>1</b> Consulte os horários</li><li><b>2</b> Informe seus dados</li><li><b>3</b> Pague e envie o comprovante</li></ol>
         <div class="online-agenda__layout">
           <div class="online-agenda__calendar-card">
             <div class="online-agenda__card-heading"><div><h3>Consulta e calendário</h3><p>As vagas abertas mostram o horário e a doutora que fará a consulta.</p></div></div>
             <div class="online-agenda__service">
               <div class="online-agenda__service-copy"><strong>Consulta dermatológica · presencial</strong><span>Atendimento no Paraíso, São Paulo</span></div>
-              <div class="online-agenda__price"><strong>R$ 250</strong><span>valor total da consulta</span></div>
+              <div class="online-agenda__price"><strong>R$ 250</strong><span>R$ 125 de sinal para reservar</span></div>
             </div>
             <div class="online-agenda__monthbar"><button class="agenda-month-button" id="agenda-prev" type="button" aria-label="Mês anterior">‹</button><strong id="agenda-month" aria-live="polite"></strong><button class="agenda-month-button" id="agenda-next" type="button" aria-label="Próximo mês">›</button></div>
             <div class="online-agenda__weekdays" aria-hidden="true"><span>DOM</span><span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SÁB</span></div>
@@ -125,7 +125,7 @@
             <div class="online-agenda__slots" id="agenda-slots" aria-live="polite"><p class="online-agenda__empty">Escolha uma data marcada para consultar os horários disponíveis.</p></div>
           </div>
           <div class="online-agenda__patient-card">
-            <div class="online-agenda__card-heading"><div><h3>Confirmar a reserva</h3><p>Nesta primeira fase, o horário é confirmado sem cobrança.</p></div></div>
+            <div class="online-agenda__card-heading"><div><h3>Solicitar um horário</h3><p>A vaga fica pendente até a clínica conferir o Pix de R$ 125,00.</p></div></div>
             <div class="online-agenda__summary" aria-live="polite"><span>Consulta selecionada</span><strong id="agenda-summary-title">Sua consulta começa aqui</strong><small id="agenda-summary-detail">Escolha um horário para ver a doutora, a data e o valor total da consulta.</small></div>
             <form class="online-agenda__form" id="agenda-form" novalidate>
               <label>Nome completo<input name="fullName" type="text" placeholder="Seu nome e sobrenome" autocomplete="name" minlength="2" maxlength="120" required disabled></label>
@@ -147,11 +147,20 @@
               </div>
               <input name="website" type="text" autocomplete="off" tabindex="-1" aria-hidden="true" hidden>
               <label class="online-agenda__privacy"><input id="agenda-privacy-check" name="acceptedPrivacy" type="checkbox" required disabled><span>Li o aviso de privacidade e compreendi que meus dados de contato, CPF e endereço serão usados para administrar a consulta e emitir a nota fiscal. <a id="agenda-privacy-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Leia o aviso de privacidade</a></span></label>
-              <button class="btn online-agenda__submit" id="agenda-submit" type="submit" disabled>Confirmar agendamento <svg class="icon"><use href="#i-arrow"/></svg></button>
-              <p class="online-agenda__fineprint">Nesta etapa, o agendamento não tem cobrança. O pagamento pela InfinitePay será conectado depois. A consulta custa R$ 250,00. CPF e endereço são solicitados para a nota fiscal; não informe sintomas neste formulário.</p>
+              <button class="btn online-agenda__submit" id="agenda-submit" type="submit" disabled>Continuar para o Pix <svg class="icon"><use href="#i-arrow"/></svg></button>
+              <p class="online-agenda__fineprint">O valor total da consulta é R$ 250,00. Para solicitar o horário, é necessário pagar R$ 125,00 via Pix. O horário só fica confirmado após a clínica verificar o pagamento. CPF e endereço são solicitados para a nota fiscal; não informe sintomas neste formulário.</p>
               <p class="online-agenda__feedback" id="agenda-feedback" role="status" aria-live="polite"></p>
             </form>
-            <p class="online-agenda__privacy-note">Atendimentos às terças-feiras a partir de 17/11/2026: Jéssica, das 9h às 13h; Mariana, das 14h às 18h. Nesta fase a reserva é confirmada sem cobrança. Quando a InfinitePay for conectada, a confirmação poderá depender da aprovação do pagamento.</p>
+            <section class="online-agenda__pix" id="agenda-payment" aria-labelledby="agenda-payment-title" aria-live="polite" hidden>
+              <h4 id="agenda-payment-title">Pague o sinal para solicitar sua reserva</h4>
+              <p id="agenda-payment-detail" class="online-agenda__pix-status"></p>
+              <img id="agenda-payment-qr" src="" alt="QR Code Pix da doutora responsável pela consulta" width="355" height="355">
+              <p class="online-agenda__pix-status">Escaneie o QR Code e digite <strong>R$ 125,00</strong>. Depois, envie a imagem do comprovante pelo WhatsApp da clínica. O envio do comprovante não confirma automaticamente a consulta.</p>
+              <a class="btn online-agenda__pix-copy" id="agenda-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer">Enviar comprovante pelo WhatsApp</a>
+              <button class="btn btn--outline online-agenda__pix-copy" id="agenda-proof-sent" type="button">Já enviei o comprovante</button>
+              <p id="agenda-payment-status" class="online-agenda__pix-status" role="status"></p>
+            </section>
+            <p class="online-agenda__privacy-note">Atendimentos às terças-feiras a partir de 17/11/2026: Jéssica, das 9h às 13h; Mariana, das 14h às 18h. A vaga fica reservada por até 2 horas enquanto aguarda o pagamento. Depois de enviar o comprovante pelo WhatsApp (11) 92742-0834, volte aqui e marque “Já enviei o comprovante”. A consulta só será confirmada depois da verificação manual pela clínica.</p>
           </div>
         </div>
       </div>
@@ -180,7 +189,7 @@
     <section class="visit" id="localizacao"><div class="visit-info"><span class="eyebrow">Localização</span><h2>Estamos no Paraíso, em São Paulo.</h2><p>Atendimento presencial em uma região de fácil acesso.</p><address><svg class="icon"><use href="#i-pin"/></svg><span>R. Abílio Soares, 233 — Cj. 71<br>Paraíso, São Paulo — SP<br>CEP 04005-000</span></address></div><div class="visit-map"><iframe title="Mapa da localização da Base Dermatologia no Paraíso, São Paulo" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=R.+Ab%C3%ADlio+Soares%2C+233+-+Cj.+71+-+Para%C3%ADso%2C+S%C3%A3o+Paulo+-+SP,+04005-000&output=embed"></iframe></div><div class="visit-cta"><h3>Agende sua consulta.</h3><p>Consulta dermatológica por R$ 250,00. R$ 125 via Pix para agendar e R$ 125 no dia da consulta.</p><a class="btn btn--light" href="#agendamento">Ver valores e regras <svg class="icon"><use href="#i-arrow"/></svg></a><a class="btn btn--light" href="https://wa.me/5511927420834" target="_blank" rel="noopener noreferrer">WhatsApp: (11) 92742-0834</a><a class="map-link" href="https://www.google.com/maps/search/?api=1&query=R.+Ab%C3%ADlio+Soares%2C+233+-+Cj.+71+-+Para%C3%ADso%2C+S%C3%A3o+Paulo+-+SP,+04005-000" target="_blank" rel="noopener noreferrer"><svg class="icon"><use href="#i-pin"/></svg>Abrir localização no mapa</a></div></section>
   </main>
 
-  <footer class="footer"><div class="wrap footer-inner"><a class="brand" href="#inicio" aria-label="Base Dermatologia — voltar ao início"><span class="brand-name">BASE</span><span class="brand-sub">DERMATOLOGIA</span></a><nav aria-label="Navegação do rodapé"><ul class="footer-nav"><li><a href="#inicio">Início</a></li><li><a href="#sobre">Sobre</a></li><li><a href="#atendimentos">Atendimentos</a></li><li><a href="#agenda">Agendamento</a></li><li><a href="#localizacao">Localização</a></li></ul></nav><p class="footer-fine">Este site tem caráter informativo e não substitui a avaliação médica. © <span id="year">2026</span> Base Dermatologia.</p></div></footer>
+  <footer class="footer"><div class="wrap footer-inner"><a class="brand" href="#inicio" aria-label="Base Dermatologia — voltar ao início"><span class="brand-name">BASE</span><span class="brand-sub">DERMATOLOGIA</span></a><nav aria-label="Navegação do rodapé"><ul class="footer-nav"><li><a href="#inicio">Início</a></li><li><a href="#sobre">Sobre</a></li><li><a href="#atendimentos">Atendimentos</a></li><li><a href="#agenda">Agendamento</a></li><li><a href="#localizacao">Localização</a></li><li><a href="./admin.html">Acesso da equipe</a></li></ul></nav><p class="footer-fine">Este site tem caráter informativo e não substitui a avaliação médica. © <span id="year">2026</span> Base Dermatologia.</p></div></footer>
   <div class="mobile-booking" aria-label="Atalho de agendamento e contato"><div class="mobile-booking-copy"><span>Consulta dermatológica</span><strong>R$ 250,00</strong></div><div class="mobile-booking-actions" aria-label="Agendar ou falar pelo WhatsApp"><a class="btn" href="#agendamento">Agendar <svg class="icon"><use href="#i-arrow"/></svg></a><a class="btn btn--outline" href="https://wa.me/5511927420834" target="_blank" rel="noopener noreferrer" aria-label="Fale pelo WhatsApp no (11) 92742-0834">WhatsApp</a></div></div>
   <script src="./scripts/agenda-config.js"></script>
   <script defer src="./scripts/agenda.js"></script>

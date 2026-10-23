@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f2eb">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Painel administrativo de agendamentos da Base Dermatologia.">
+  <title>Painel de agendamentos | Base Dermatologia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles/admin.css">
+  <link rel="stylesheet" href="./styles/admin-agenda.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <header class="admin-header">
+      <a class="admin-brand" href="./index.html" aria-label="Voltar ao site Base Dermatologia">
+        <span class="admin-brand__name">BASE</span>
+        <span class="admin-brand__subtitle">DERMATOLOGIA</span>
+      </a>
+      <a class="back-link" href="./index.html">Voltar ao site</a>
+    </header>
+
+    <section class="admin-intro" aria-labelledby="page-title">
+      <p class="eyebrow">Área restrita da equipe</p>
+      <h1 id="page-title">Agenda da clínica</h1>
+      <p>Consulte as reservas, confira o Pix recebido e administre horários e dados dos agendamentos.</p>
+    </section>
+
+    <section class="admin-panel" id="login-panel" aria-labelledby="login-title">
+      <h2 id="login-title">Acesso da equipe</h2>
+      <p>Entre usando o e-mail e a senha compartilhados da clínica.</p>
+      <form id="login-form" class="login-form">
+        <label for="admin-email">E-mail da clínica</label>
+        <input id="admin-email" name="email" type="email" value="contato@basedermatologia.com.br" readonly autocomplete="username">
+        <label for="admin-password">Senha compartilhada</label>
+        <input id="admin-password" name="password" type="password" required minlength="12" autocomplete="current-password">
+        <button class="button" id="login-submit" type="submit">Entrar no painel</button>
+      </form>
+      <p class="status-message" id="auth-status" role="status" aria-live="polite"></p>
+      <p class="security-note"><strong>Conta compartilhada:</strong> a mesma senha é usada pelas duas doutoras. Se uma alterar a senha, a nova senha valerá para ambas; o painel não distingue qual delas realizou cada ação.</p>
+    </section>
+
+    <section class="admin-panel" id="dashboard" aria-labelledby="dashboard-title" hidden>
+      <div class="dashboard-heading">
+        <div>
+          <p class="eyebrow">Acesso autorizado</p>
+          <h2 id="dashboard-title">Agendamentos</h2>
+        </div>
+        <button class="button button--quiet" id="sign-out" type="button">Sair</button>
+      </div>
+      <p class="security-note">Confirme o recebimento do Pix antes de liberar a consulta. Marcar o comprovante como enviado não confirma automaticamente o pagamento.</p>
+      <p class="schedule-rule"><strong>Responsável pelo horário:</strong> terça-feira, 9h–13h com Jéssica Saab; 14h–18h com Mariana Gil Furlanetti. A doutora exibida em cada marcação é a associada ao horário reservado.</p>
+
+      <details class="password-settings">
+        <summary>Alterar senha compartilhada</summary>
+        <p>A nova senha passará a ser usada pelas duas doutoras. Ela deve ter pelo menos 12 caracteres.</p>
+        <form id="password-form" class="login-form">
+          <label for="current-password">Senha atual</label>
+          <input id="current-password" name="currentPassword" type="password" required autocomplete="current-password">
+          <label for="new-password">Nova senha</label>
+          <input id="new-password" name="newPassword" type="password" required minlength="12" autocomplete="new-password">
+          <label for="confirm-password">Confirme a nova senha</label>
+          <input id="confirm-password" name="confirmPassword" type="password" required minlength="12" autocomplete="new-password">
+          <p class="status-message" id="password-status" role="status" aria-live="polite"></p>
+          <button class="button" id="save-password" type="submit">Salvar nova senha</button>
+        </form>
+      </details>
+
+      <form class="filters" id="filters-form">
+        <label for="search-bookings">Buscar por nome, e-mail, telefone ou código</label>
+        <input id="search-bookings" name="q" type="search" maxlength="100" placeholder="Nome, telefone ou código do agendamento">
+        <label for="status-filter">Situação</label>
+        <select id="status-filter" name="status">
+          <option value="">Todas as situações</option>
+          <option value="pending_payment">Aguardando pagamento</option>
+          <option value="payment_review">Comprovante enviado · conferir Pix</option>
+          <option value="confirmed">Confirmadas</option>
+          <option value="cancelled">Canceladas</option>
+          <option value="expired">Expiradas</option>
+        </select>
+        <button class="button" type="submit">Aplicar filtros</button>
+      </form>
+      <p class="status-message" id="dashboard-status" role="status" aria-live="polite"></p>
+      <section class="schedule-view" aria-labelledby="schedule-title">
+        <h3 id="schedule-title">Agenda por dia e horário</h3>
+        <p>As marcações são agrupadas pelo horário reservado e mostram a profissional responsável e a situação do Pix.</p>
+        <div class="schedule-board" id="schedule-board"></div>
+      </section>
+      <div class="booking-list" id="booking-list" aria-live="polite"></div>
+      <nav class="pagination" aria-label="Paginação dos agendamentos">
+        <button class="button button--quiet" id="previous-page" type="button" disabled>Anterior</button>
+        <span id="page-label">Página 1</span>
+        <button class="button button--quiet" id="next-page" type="button" disabled>Próxima</button>
+      </nav>
+    </section>
+  </main>
+
+  <dialog class="edit-dialog" id="edit-dialog" aria-labelledby="edit-title">
+    <form class="edit-form" id="edit-form">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">Editar agendamento</p>
+          <h2 id="edit-title">Dados da consulta</h2>
+        </div>
+        <button class="close-button" type="button" id="close-edit" aria-label="Fechar">×</button>
+      </div>
+      <p class="dialog-caption" id="edit-booking-summary"></p>
+      <input type="hidden" name="appointmentId">
+      <div class="form-grid">
+        <label>Nome completo<input name="patient_name" type="text" maxlength="120" required></label>
+        <label>E-mail<input name="patient_email" type="email" maxlength="254" required></label>
+        <label>Telefone<input name="patient_phone" type="tel" maxlength="22" required></label>
+        <label>CPF<input name="patient_cpf" inputmode="numeric" maxlength="11" pattern="[0-9]{11}" required></label>
+        <label>Rua / avenida<input name="patient_address_line" type="text" maxlength="160" required></label>
+        <label>Número<input name="patient_address_number" type="text" maxlength="20" required></label>
+        <label>Complemento<input name="patient_address_complement" type="text" maxlength="100"></label>
+        <label>Bairro<input name="patient_address_neighborhood" type="text" maxlength="80" required></label>
+        <label>Cidade<input name="patient_address_city" type="text" maxlength="80" required></label>
+        <label>Estado (UF)<input name="patient_address_state" type="text" maxlength="2" pattern="[A-Za-z]{2}" required></label>
+        <label>CEP<input name="patient_address_postal_code" inputmode="numeric" type="text" maxlength="8" pattern="[0-9]{8}" required></label>
+        <label class="slot-field">Remarcar para horário disponível<select name="new_slot_id"><option value="">Manter horário atual</option></select></label>
+      </div>
+      <p class="dialog-caption">CPF e endereço são usados para emissão da nota fiscal. Não inclua sintomas ou informações de saúde nas observações.</p>
+      <p class="status-message" id="edit-status" role="status" aria-live="polite"></p>
+      <div class="dialog-actions">
+        <button class="button button--quiet" type="button" id="cancel-edit">Voltar</button>
+        <button class="button" id="save-edit" type="submit">Salvar alterações</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="./scripts/agenda-config.js"></script>
+  <script type="module" src="./scripts/admin.js"></script>
+</body>
+</html>
