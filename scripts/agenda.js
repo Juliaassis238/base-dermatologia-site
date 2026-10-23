@@ -41,6 +41,9 @@
   const paymentPanel = $('#agenda-payment');
   const paymentDetail = $('#agenda-payment-detail');
   const paymentQr = $('#agenda-payment-qr');
+  const pixCopyCode = $('#agenda-pix-copy-code');
+  const pixCopyButton = $('#agenda-pix-copy-button');
+  const pixCopyStatus = $('#agenda-pix-copy-status');
   const whatsappLink = $('#agenda-whatsapp-link');
   const proofSentButton = $('#agenda-proof-sent');
   const paymentStatus = $('#agenda-payment-status');
@@ -309,13 +312,15 @@
 
   function showPixInstructions(result, selectedSlot, patientName) {
     const doctorName = String(result.doctorName || selectedSlot.doctorName || '');
-    const qrImage = /j[eé]ssica/i.test(doctorName)
-      ? './images/pix-jessica.png'
-      : /mariana/i.test(doctorName) ? './images/pix-mariana.png' : '';
-    if (!qrImage || Number(result.amountCents) !== 12500) {
+    const pixDoctor = /j[eé]ssica/i.test(doctorName) ? 'jessica' : /mariana/i.test(doctorName) ? 'mariana' : '';
+    const qrImage = pixDoctor === 'jessica' ? './images/pix-jessica.png' : pixDoctor === 'mariana' ? './images/pix-mariana.png' : '';
+    const pixPayload = window.BASE_PIX_COPY_CODES?.[pixDoctor] || '';
+    if (!qrImage || !pixPayload || Number(result.amountCents) !== 12500) {
       paymentStatus.textContent = 'A reserva foi criada, mas não conseguimos identificar com segurança o QR da profissional. Não pague por outro código; fale com a clínica pelo WhatsApp.';
       paymentPanel.hidden = false;
       paymentQr.hidden = true;
+      pixCopyCode.hidden = true;
+      pixCopyButton.hidden = true;
       return;
     }
     const appointmentTime = result.startsAt || selectedSlot.startsAt;
@@ -326,6 +331,11 @@
     paymentQr.src = qrImage;
     paymentQr.alt = `QR Code Pix de ${doctorName} para o sinal de R$ 125,00`;
     paymentQr.hidden = false;
+    pixCopyCode.value = pixPayload;
+    pixCopyCode.hidden = false;
+    pixCopyButton.hidden = false;
+    pixCopyStatus.textContent = '';
+    pixCopyButton.textContent = 'Copiar código Pix';
     paymentDetail.textContent = `${doctorName} · ${appointmentDate}, às ${appointmentHour} · código ${reference}. A vaga fica pendente enquanto aguardamos o pagamento.`;
     const message = `Olá, Base Dermatologia! Enviei o Pix de R$ 125,00 para solicitar minha consulta.\nNome: ${firstName}\nProfissional: ${doctorName}\nData e horário: ${appointmentDate}, às ${appointmentHour}\nCódigo: ${reference}\nVou anexar o comprovante.`;
     whatsappLink.href = `https://wa.me/${result.whatsappNumber || '5511927420834'}?text=${encodeURIComponent(message)}`;
@@ -424,6 +434,26 @@
     } catch (error) {
       paymentStatus.textContent = error.message || 'Não conseguimos atualizar o aviso de envio. Fale com a clínica pelo WhatsApp.';
       proofSentButton.disabled = false;
+    }
+  });
+
+  pixCopyButton.addEventListener('click', async () => {
+    const payload = pixCopyCode.value;
+    if (!payload) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+      } else {
+        pixCopyCode.focus();
+        pixCopyCode.select();
+        if (!document.execCommand('copy')) throw new Error('copy_failed');
+      }
+      pixCopyStatus.textContent = 'Código Pix copiado. Cole-o no aplicativo do seu banco e informe R$ 125,00.';
+      pixCopyButton.textContent = 'Código copiado';
+    } catch {
+      pixCopyCode.focus();
+      pixCopyCode.select();
+      pixCopyStatus.textContent = 'Não foi possível copiar automaticamente. O código está selecionado; copie-o manualmente.';
     }
   });
 

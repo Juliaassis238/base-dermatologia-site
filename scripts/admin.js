@@ -185,7 +185,9 @@ function renderTestEntries(items) {
   testAgendaList.innerHTML = items.map((entry) => {
     const name = escapeHtml(entry.test_name);
     const doctor = escapeHtml(entry.doctor_name);
-    const qrPath = entry.doctor_name === 'Mariana Gil Furlanetti' ? './images/pix-mariana.png' : './images/pix-jessica.png';
+    const pixDoctor = /mariana/i.test(entry.doctor_name) ? 'mariana' : /j[eé]ssica/i.test(entry.doctor_name) ? 'jessica' : '';
+    const qrPath = pixDoctor === 'mariana' ? './images/pix-mariana.png' : pixDoctor === 'jessica' ? './images/pix-jessica.png' : '';
+    const pixPayload = window.BASE_PIX_COPY_CODES?.[pixDoctor] || '';
     const date = escapeHtml(new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(`${entry.test_date}T12:00:00-03:00`)));
     const status = escapeHtml(testStatusLabels[entry.status] || 'Situação de teste desconhecida');
     const amount = brMoney(entry.amount_cents);
@@ -210,7 +212,8 @@ function renderTestEntries(items) {
       <p><strong>Data:</strong> ${date} · sem horário definido</p>
       <p><strong>Pix de teste:</strong> ${escapeHtml(amount)}</p>
       <p class="test-entry__note">QR estático da profissional. Digite R$ 0,01 manualmente no aplicativo do banco. Este teste não reserva horário nem confirma pagamento real.</p>
-      <img class="test-entry__qr" src="${qrPath}" alt="QR Code Pix de teste da profissional ${doctor}" loading="lazy" width="180" height="180">
+      ${qrPath ? `<img class="test-entry__qr" src="${qrPath}" alt="QR Code Pix de teste da profissional ${doctor}" loading="lazy" width="180" height="180">` : '<p class="test-entry__note">Não foi possível identificar o código Pix desta profissional.</p>'}
+      ${pixPayload ? `<label class="test-entry__pix-label">Pix copia e cola<textarea class="test-entry__pix-code" readonly rows="3">${escapeHtml(pixPayload)}</textarea></label><button class="button button--quiet" type="button" data-copy-test-pix>Copiar código Pix</button><p class="test-entry__copy-status" role="status" aria-live="polite"></p>` : ''}
       <div class="test-entry__actions">${whatsappLink}${actions.join('')}</div>
     </article>`;
   }).join('');
@@ -479,6 +482,28 @@ $('#sign-out').addEventListener('click', async () => {
   showSignedOut('Você saiu do painel.');
 });
 testAgendaList.addEventListener('click', async (event) => {
+  const copyButton = event.target.closest('[data-copy-test-pix]');
+  if (copyButton) {
+    const card = copyButton.closest('[data-test-entry-id]');
+    const codeField = card?.querySelector('.test-entry__pix-code');
+    const status = card?.querySelector('.test-entry__copy-status');
+    if (!codeField || !status) return;
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(codeField.value);
+      else {
+        codeField.focus();
+        codeField.select();
+        if (!document.execCommand('copy')) throw new Error('copy_failed');
+      }
+      copyButton.textContent = 'Código copiado';
+      status.textContent = 'Código Pix copiado. Para o teste, informe R$ 0,01 no aplicativo do banco.';
+    } catch {
+      codeField.focus();
+      codeField.select();
+      status.textContent = 'Não foi possível copiar automaticamente. O código está selecionado; copie-o manualmente.';
+    }
+    return;
+  }
   const button = event.target.closest('[data-test-action]');
   if (!button) return;
   const card = button.closest('[data-test-entry-id]');

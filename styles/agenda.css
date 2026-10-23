@@ -74,6 +74,10 @@
 .online-agenda__pix h4{margin:0 0 .35rem;font:500 1.25rem var(--serif)}
 .online-agenda__pix img{width:min(190px,100%);aspect-ratio:1/1;object-fit:contain;margin:.8rem auto;border:1px solid var(--line);background:#fff}
 .online-agenda__pix textarea{width:100%;min-height:4.3rem;padding:.65rem;border:1px solid var(--line);font:400 .72rem/1.4 var(--sans);resize:vertical}
+.online-agenda__pix-code-label{display:block;margin:.9rem 0 .35rem;color:var(--olive-deep);font-size:.73rem;font-weight:600;line-height:1.45}
+.online-agenda__pix-code{display:block;min-height:4.5rem;overflow-wrap:anywhere;word-break:break-all;background:#fff;color:var(--ink)}
+.online-agenda__pix-code:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
+.online-agenda__pix-code[hidden],.online-agenda__pix-copy[hidden]{display:none}
 .online-agenda__pix-copy{width:100%;margin-top:.5rem}
 .online-agenda__pix-status{margin:.6rem 0 0;color:var(--muted);font-size:.78rem;line-height:1.45}
 .online-agenda__privacy-note{margin:.85rem 0 0;padding-top:.8rem;border-top:1px solid var(--line);color:var(--muted);font-size:.73rem;line-height:1.55}
