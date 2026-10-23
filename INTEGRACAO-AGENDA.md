@@ -20,11 +20,11 @@ O sinal para solicitar a reserva é R$ 125,00 via Pix. O valor total da consulta
 
 ## Painel administrativo
 
-O painel está em `admin.html` e autentica pelo Supabase Auth com e-mail e senha. A conta autorizada `contato@basedermatologia.com.br` foi criada pela clínica no painel Supabase com confirmação automática; não se envia convite, magic link ou outro e-mail de acesso, e não é necessário configurar SMTP ou URL de retorno para esse login.
+O painel está em `admin.html` e autentica pelo Supabase Auth com e-mail e senha. A conta autorizada foi criada pela clínica no painel Supabase com confirmação automática. O campo de e-mail inicia vazio, é digitado em cada tentativa e é apagado depois; a agenda só aparece após o Supabase e a API do servidor autorizarem a sessão. Não se envia convite, magic link ou outro e-mail de acesso, e não é necessário configurar SMTP ou URL de retorno para esse login.
 
 As doutoras usam a mesma conta e a mesma senha. A opção “Alterar senha compartilhada” pede a senha atual, exige uma nova senha com pelo menos 12 caracteres e atualiza diretamente a credencial no Supabase Auth; em seguida, o painel testa o novo login e renova a sessão antes de informar sucesso. A alteração vale para ambas. Se a validação da nova sessão falhar, o painel pede novo login com a senha atualizada. Se a senha for esquecida, o responsável pelo projeto Supabase precisa redefini-la manualmente. Como o login é compartilhado, o histórico administrativo fica associado ao e-mail da clínica e não identifica qual doutora fez cada alteração.
 
-A API valida o JWT da sessão e só aceita esse endereço para operações administrativas. A interface mostra uma agenda por data, horário, profissional e estado, além de uma lista paginada com filtro por situação e busca por nome, e-mail, telefone ou código. O editor inclui nome, e-mail, telefone, CPF, endereço e remarcação.
+A API valida o JWT da sessão e só aceita a conta autorizada da clínica para operações administrativas. A interface mostra uma agenda por data, horário, profissional e estado, além de uma lista paginada com filtro por situação e busca por nome, e-mail, telefone ou código. O editor inclui nome, e-mail, telefone, CPF, endereço e remarcação.
 
 A tabela de auditoria `public.appointment_admin_audit` registra as operações administrativas sob o mesmo e-mail da clínica, os campos alterados e os horários anterior e novo. O acesso direto às tabelas permanece bloqueado para o navegador; a API administrativa passa pela Edge Function e pelos RPCs protegidos. CPF e endereço não são copiados para os logs de auditoria.
 

@@ -1,7 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const config = window.BASE_AGENDA_CONFIG || {};
-const adminEmail = 'contato@basedermatologia.com.br';
 const apiBase = String(config.apiBaseUrl || '').replace(/\/+$/, '');
 const anonKey = String(config.anonKey || '');
 const supabaseUrl = apiBase.replace(/\/functions\/v1\/agenda$/, '');
@@ -9,6 +8,7 @@ const $ = (selector) => document.querySelector(selector);
 const loginPanel = $('#login-panel');
 const loginForm = $('#login-form');
 const loginStatus = $('#auth-status');
+loginForm.elements.email.value = '';
 const passwordForm = $('#password-form');
 const passwordStatus = $('#password-status');
 const dashboard = $('#dashboard');
@@ -68,7 +68,11 @@ function shiftDateKey(dateKey, numberOfDays) {
 
 function showSignedOut(message = '') {
   session = null;
+  page = 1;
+  searchInput.value = '';
+  statusFilter.value = '';
   passwordForm.reset();
+  loginForm.elements.email.value = '';
   loginForm.elements.password.value = '';
   loginPanel.hidden = false;
   dashboard.hidden = true;
@@ -77,15 +81,20 @@ function showSignedOut(message = '') {
 
 async function showSignedIn(userSession) {
   if (!userSession?.access_token) return showSignedOut();
-  const email = String(userSession.user?.email || '').trim().toLowerCase();
-  if (email !== adminEmail) {
-    await supabase.auth.signOut();
-    return showSignedOut('Esse endereço não está autorizado para administrar os agendamentos.');
-  }
   session = userSession;
-  loginPanel.hidden = true;
-  dashboard.hidden = false;
-  await loadAppointments();
+  try {
+    const authorization = await apiRequest('admin-appointments?page=1');
+    if (!session) return;
+    loginPanel.hidden = true;
+    dashboard.hidden = false;
+    await loadAppointments(authorization);
+  } catch (error) {
+    if (session) await supabase.auth.signOut();
+    const message = error.message === 'Acesso não autorizado.'
+      ? 'O e-mail digitado não está autorizado para acessar o painel.'
+      : 'Não foi possível validar o acesso ao painel. Confira as credenciais e tente novamente.';
+    showSignedOut(message);
+  }
 }
 
 async function apiRequest(endpoint, options = {}) {
@@ -103,8 +112,11 @@ async function apiRequest(endpoint, options = {}) {
   });
   const result = await response.json().catch(() => ({}));
   if (response.status === 401) {
+    const authMessage = result.message === 'Acesso não autorizado.'
+      ? 'Esse e-mail não está autorizado para administrar os agendamentos.'
+      : 'Sua sessão expirou. Entre novamente com o e-mail e a senha da clínica.';
     await supabase.auth.signOut();
-    showSignedOut('Sua sessão expirou. Entre novamente com o e-mail e a senha da clínica.');
+    showSignedOut(authMessage);
   }
   if (!response.ok) throw new Error(result.message || 'Não foi possível concluir esta operação.');
   return result;
@@ -192,7 +204,7 @@ function renderAppointments(items) {
   }).join('');
 }
 
-async function loadAppointments() {
+async function loadAppointments(preloadedResult = null) {
   if (!session) return;
   dashboardStatus.textContent = 'Carregando agendamentos…';
   bookingList.setAttribute('aria-busy', 'true');
@@ -200,7 +212,7 @@ async function loadAppointments() {
     const params = new URLSearchParams({ page: String(page) });
     if (statusFilter.value) params.set('status', statusFilter.value);
     if (searchInput.value.trim()) params.set('q', searchInput.value.trim());
-    const result = await apiRequest(`admin-appointments?${params.toString()}`);
+    const result = preloadedResult || await apiRequest(`admin-appointments?${params.toString()}`);
     const items = Array.isArray(result.appointments) ? result.appointments : [];
     renderAppointments(items);
     hasMore = Boolean(result.hasMore);
@@ -315,16 +327,19 @@ loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!supabase) return;
   const button = $('#login-submit');
-  const password = String(new FormData(loginForm).get('password') || '');
+  const credentials = new FormData(loginForm);
+  const email = String(credentials.get('email') || '').trim().toLowerCase();
+  const password = String(credentials.get('password') || '');
   button.disabled = true;
-  loginStatus.textContent = 'Verificando acesso…';
+  loginStatus.textContent = 'Verificando as credenciais…';
   try {
-    const { error } = await supabase.auth.signInWithPassword({ email: adminEmail, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    loginStatus.textContent = 'Acesso autorizado.';
+    loginStatus.textContent = 'Credenciais corretas. Validando autorização do painel…';
   } catch {
     loginStatus.textContent = 'Não foi possível entrar. Confira o e-mail e a senha e tente novamente.';
   } finally {
+    loginForm.elements.email.value = '';
     loginForm.elements.password.value = '';
     button.disabled = false;
   }
@@ -337,8 +352,13 @@ passwordForm.addEventListener('submit', async (event) => {
   const currentPassword = String(values.get('currentPassword') || '');
   const newPassword = String(values.get('newPassword') || '');
   const confirmPassword = String(values.get('confirmPassword') || '');
+  const sessionEmail = String(session.user?.email || '').trim().toLowerCase();
   const button = $('#save-password');
   passwordStatus.textContent = '';
+  if (!sessionEmail) {
+    passwordStatus.textContent = 'Entre novamente antes de alterar a senha.';
+    return;
+  }
   if (newPassword.length < 12) {
     passwordStatus.textContent = 'Escolha uma senha com pelo menos 12 caracteres.';
     return;
@@ -354,11 +374,11 @@ passwordForm.addEventListener('submit', async (event) => {
   button.disabled = true;
   passwordStatus.textContent = 'Atualizando a senha compartilhada…';
   try {
-    const { error: verifyError } = await supabase.auth.signInWithPassword({ email: adminEmail, password: currentPassword });
+    const { error: verifyError } = await supabase.auth.signInWithPassword({ email: sessionEmail, password: currentPassword });
     if (verifyError) throw new Error('A senha atual não confere.');
     const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
     if (updateError) throw updateError;
-    const { data: verified, error: newPasswordError } = await supabase.auth.signInWithPassword({ email: adminEmail, password: newPassword });
+    const { data: verified, error: newPasswordError } = await supabase.auth.signInWithPassword({ email: sessionEmail, password: newPassword });
     if (newPasswordError || !verified.session) {
       await supabase.auth.signOut();
       showSignedOut('Senha alterada. Entre novamente usando a nova senha compartilhada.');
