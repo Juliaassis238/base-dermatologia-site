@@ -32,15 +32,15 @@
     <section class="admin-panel" id="login-panel" aria-labelledby="login-title">
       <h2 id="login-title">Acesso da equipe</h2>
       <p>Entre usando o e-mail e a senha compartilhados da clínica.</p>
-      <form id="login-form" class="login-form">
+      <form id="login-form" class="login-form" autocomplete="off">
         <label for="admin-email">E-mail da clínica</label>
         <input id="admin-email" name="email" type="email" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Digite o e-mail autorizado">
         <label for="admin-password">Senha compartilhada</label>
-        <input id="admin-password" name="password" type="password" required minlength="12" autocomplete="current-password">
+        <input id="admin-password" name="password" type="password" required minlength="12" autocomplete="off">
         <button class="button" id="login-submit" type="submit">Entrar no painel</button>
       </form>
       <p class="status-message" id="auth-status" role="status" aria-live="polite"></p>
-      <p class="security-note"><strong>Conta compartilhada:</strong> o painel só é liberado após validar o e-mail e a senha autorizados no Supabase e no servidor. A mesma senha é usada pelas duas doutoras; se uma a alterar, a nova senha valerá para ambas. O sistema não distingue qual delas realizou cada ação.</p>
+      <p class="security-note"><strong>Conta compartilhada:</strong> o painel só é liberado após validar o e-mail e a senha autorizados no Supabase e no servidor. Por segurança, a sessão não é salva e será necessário entrar novamente sempre que o painel for aberto. A mesma senha é usada pelas duas doutoras; se uma a alterar, a nova senha valerá para ambas. O sistema não distingue qual delas realizou cada ação.</p>
     </section>
 
     <section class="admin-panel" id="dashboard" aria-labelledby="dashboard-title" hidden>
@@ -133,6 +133,6 @@
   </dialog>
 
   <script src="./scripts/agenda-config.js"></script>
-  <script type="module" src="./scripts/admin.js"></script>
+  <script type="module" src="./scripts/admin.js?v=required-login-20261023"></script>
 </body>
 </html>

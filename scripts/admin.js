@@ -89,7 +89,7 @@ async function showSignedIn(userSession) {
     dashboard.hidden = false;
     await loadAppointments(authorization);
   } catch (error) {
-    if (session) await supabase.auth.signOut();
+    if (session) await supabase.auth.signOut({ scope: 'local' });
     const message = error.message === 'Acesso não autorizado.'
       ? 'O e-mail digitado não está autorizado para acessar o painel.'
       : 'Não foi possível validar o acesso ao painel. Confira as credenciais e tente novamente.';
@@ -115,7 +115,7 @@ async function apiRequest(endpoint, options = {}) {
     const authMessage = result.message === 'Acesso não autorizado.'
       ? 'Esse e-mail não está autorizado para administrar os agendamentos.'
       : 'Sua sessão expirou. Entre novamente com o e-mail e a senha da clínica.';
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     showSignedOut(authMessage);
   }
   if (!response.ok) throw new Error(result.message || 'Não foi possível concluir esta operação.');
@@ -380,7 +380,7 @@ passwordForm.addEventListener('submit', async (event) => {
     if (updateError) throw updateError;
     const { data: verified, error: newPasswordError } = await supabase.auth.signInWithPassword({ email: sessionEmail, password: newPassword });
     if (newPasswordError || !verified.session) {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' });
       showSignedOut('Senha alterada. Entre novamente usando a nova senha compartilhada.');
       return;
     }
@@ -411,7 +411,7 @@ nextButton.addEventListener('click', () => {
   void loadAppointments();
 });
 $('#sign-out').addEventListener('click', async () => {
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: 'local' });
   showSignedOut('Você saiu do painel.');
 });
 bookingList.addEventListener('click', (event) => {
@@ -478,19 +478,38 @@ async function initialize() {
     return;
   }
   try {
+    const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
+    try {
+      window.localStorage.removeItem(`sb-${projectRef}-auth-token`);
+    } catch {
+      // O armazenamento pode estar indisponível em alguns navegadores.
+    }
     supabase = createClient(supabaseUrl, anonKey, {
-      auth: { autoRefreshToken: true, persistSession: true },
+      auth: { autoRefreshToken: true, persistSession: false, detectSessionInUrl: false },
     });
     supabase.auth.onAuthStateChange((event, newSession) => {
       if (event === 'SIGNED_OUT') showSignedOut();
       if (event === 'SIGNED_IN' && newSession) void showSignedIn(newSession);
     });
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    if (data.session) await showSignedIn(data.session);
+    showSignedOut();
   } catch (error) {
     showSignedOut(error.message || 'Não foi possível inicializar o acesso seguro.');
   }
 }
+
+window.addEventListener('pagehide', () => {
+  session = null;
+  loginForm.reset();
+  passwordForm.reset();
+  loginPanel.hidden = false;
+  dashboard.hidden = true;
+  if (supabase) void supabase.auth.signOut({ scope: 'local' });
+});
+
+window.addEventListener('pageshow', (event) => {
+  if (!event.persisted) return;
+  if (supabase) void supabase.auth.signOut({ scope: 'local' });
+  showSignedOut('Por segurança, entre novamente para acessar a agenda.');
+});
 
 void initialize();
