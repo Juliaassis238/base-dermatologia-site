@@ -4,6 +4,7 @@ const config = window.BASE_AGENDA_CONFIG || {};
 const apiBase = String(config.apiBaseUrl || '').replace(/\/+$/, '');
 const anonKey = String(config.anonKey || '');
 const supabaseUrl = apiBase.replace(/\/functions\/v1\/agenda$/, '');
+const testApiBase = supabaseUrl ? `${supabaseUrl}/functions/v1/agenda-tests` : '';
 const $ = (selector) => document.querySelector(selector);
 const loginPanel = $('#login-panel');
 const loginForm = $('#login-form');
@@ -15,6 +16,8 @@ const dashboard = $('#dashboard');
 const dashboardStatus = $('#dashboard-status');
 const bookingList = $('#booking-list');
 const scheduleBoard = $('#schedule-board');
+const testAgendaList = $('#test-agenda-list');
+const testAgendaStatus = $('#test-agenda-status');
 const filtersForm = $('#filters-form');
 const searchInput = $('#search-bookings');
 const statusFilter = $('#status-filter');
@@ -29,6 +32,7 @@ const slotField = editSlotSelect.closest('label');
 const records = new Map();
 let supabase = null;
 let session = null;
+let testWhatsappNumber = '';
 let page = 1;
 let hasMore = false;
 let editingRecord = null;
@@ -40,6 +44,12 @@ const statusLabels = {
   confirmed: 'Confirmada',
   cancelled: 'Cancelada',
   expired: 'Expirada',
+};
+const testStatusLabels = {
+  pending_payment: 'Aguardando Pix de teste',
+  payment_review: 'Comprovante enviado · conferir Pix de teste',
+  confirmed: 'Liberada (teste; sem horário real)',
+  cancelled: 'Cancelada (teste)',
 };
 const brDateTime = (value) => value
   ? new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
@@ -88,6 +98,7 @@ async function showSignedIn(userSession) {
     loginPanel.hidden = true;
     dashboard.hidden = false;
     await loadAppointments(authorization);
+    await loadTestEntries();
   } catch (error) {
     if (session) await supabase.auth.signOut({ scope: 'local' });
     const message = error.message === 'Acesso não autorizado.'
@@ -99,7 +110,8 @@ async function showSignedIn(userSession) {
 
 async function apiRequest(endpoint, options = {}) {
   if (!session?.access_token) throw new Error('Sua sessão expirou. Entre novamente com o e-mail e a senha da clínica.');
-  const response = await fetch(`${apiBase}/${endpoint}`, {
+  const requestBase = String(options.baseUrl || apiBase).replace(/\/+$/, '');
+  const response = await fetch(`${requestBase}/${endpoint}`, {
     method: options.method || 'GET',
     headers: {
       Accept: 'application/json',
@@ -163,6 +175,58 @@ function renderSchedule(items) {
     }).join('');
     return `<section class="schedule-day" data-day="${escapeHtml(dayKey)}"><h4 class="schedule-day__title">${escapeHtml(day.label)}</h4><div class="schedule-day__doctors">${doctorGroups}</div></section>`;
   }).join('');
+}
+
+function renderTestEntries(items) {
+  if (!items.length) {
+    testAgendaList.innerHTML = '<div class="test-agenda__empty">Nenhum registro de teste para esta data.</div>';
+    return;
+  }
+  testAgendaList.innerHTML = items.map((entry) => {
+    const name = escapeHtml(entry.test_name);
+    const doctor = escapeHtml(entry.doctor_name);
+    const qrPath = entry.doctor_name === 'Mariana Gil Furlanetti' ? './images/pix-mariana.png' : './images/pix-jessica.png';
+    const date = escapeHtml(new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(`${entry.test_date}T12:00:00-03:00`)));
+    const status = escapeHtml(testStatusLabels[entry.status] || 'Situação de teste desconhecida');
+    const amount = brMoney(entry.amount_cents);
+    const whatsappMessage = `Comprovante Pix de TESTE ${entry.test_name} — ${entry.doctor_name} — ${date} — ${amount}.`;
+    const whatsappLink = entry.status === 'pending_payment' && testWhatsappNumber
+      ? `<a class="button button--quiet" href="https://wa.me/${escapeHtml(testWhatsappNumber)}?text=${encodeURIComponent(whatsappMessage)}" target="_blank" rel="noopener noreferrer">Enviar comprovante pelo WhatsApp</a>`
+      : '';
+    const actions = [];
+    if (entry.status === 'pending_payment') {
+      actions.push('<button class="button" type="button" data-test-action="mark_proof_received">Registrar comprovante recebido</button>');
+      actions.push('<button class="button button--danger" type="button" data-test-action="cancel">Cancelar teste</button>');
+    } else if (entry.status === 'payment_review') {
+      actions.push('<button class="button" type="button" data-test-action="approve">Conferir Pix e liberar teste</button>');
+      actions.push('<button class="button button--danger" type="button" data-test-action="cancel">Cancelar teste</button>');
+    } else {
+      actions.push('<button class="button button--quiet" type="button" data-test-action="reset">Reiniciar teste</button>');
+    }
+    return `<article class="test-entry" data-test-entry-id="${escapeHtml(entry.id)}">
+      <div class="test-entry__heading"><span class="test-entry__badge">TESTE · NÃO É ATENDIMENTO REAL</span><span class="test-entry__status">${status}</span></div>
+      <h5>${name}</h5>
+      <p><strong>Profissional:</strong> ${doctor}</p>
+      <p><strong>Data:</strong> ${date} · sem horário definido</p>
+      <p><strong>Pix de teste:</strong> ${escapeHtml(amount)}</p>
+      <p class="test-entry__note">QR estático da profissional. Digite R$ 0,01 manualmente no aplicativo do banco. Este teste não reserva horário nem confirma pagamento real.</p>
+      <img class="test-entry__qr" src="${qrPath}" alt="QR Code Pix de teste da profissional ${doctor}" loading="lazy" width="180" height="180">
+      <div class="test-entry__actions">${whatsappLink}${actions.join('')}</div>
+    </article>`;
+  }).join('');
+}
+
+async function loadTestEntries() {
+  testAgendaStatus.textContent = 'Carregando registros de teste…';
+  try {
+    const result = await apiRequest('?date=2026-10-23', { baseUrl: testApiBase });
+    testWhatsappNumber = String(result.whatsappNumber || '').replace(/\D/g, '');
+    renderTestEntries(Array.isArray(result.testEntries) ? result.testEntries : []);
+    testAgendaStatus.textContent = '';
+  } catch (error) {
+    testAgendaList.innerHTML = '';
+    testAgendaStatus.textContent = error.message || 'Não foi possível carregar os registros de teste.';
+  }
 }
 
 function renderAppointments(items) {
@@ -413,6 +477,27 @@ nextButton.addEventListener('click', () => {
 $('#sign-out').addEventListener('click', async () => {
   await supabase.auth.signOut({ scope: 'local' });
   showSignedOut('Você saiu do painel.');
+});
+testAgendaList.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-test-action]');
+  if (!button) return;
+  const card = button.closest('[data-test-entry-id]');
+  if (!card) return;
+  button.disabled = true;
+  testAgendaStatus.textContent = 'Atualizando a simulação…';
+  try {
+    const result = await apiRequest('', {
+      baseUrl: testApiBase,
+      method: 'POST',
+      body: { testEntryId: card.dataset.testEntryId, action: button.dataset.testAction },
+    });
+    await loadTestEntries();
+    testAgendaStatus.textContent = result.message || 'Situação do teste atualizada.';
+  } catch (error) {
+    testAgendaStatus.textContent = error.message || 'Não foi possível atualizar o teste.';
+  } finally {
+    button.disabled = false;
+  }
 });
 bookingList.addEventListener('click', (event) => {
   const button = event.target.closest('[data-action]');

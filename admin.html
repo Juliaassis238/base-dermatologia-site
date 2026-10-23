@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles/admin.css">
-  <link rel="stylesheet" href="./styles/admin-agenda.css">
+  <link rel="stylesheet" href="./styles/admin-agenda.css?v=test-flow-20261023">
 </head>
 <body>
   <main class="admin-shell">
@@ -88,6 +88,12 @@
         <h3 id="schedule-title">Agenda por dia e horário</h3>
         <p>As marcações são agrupadas pelo horário reservado e mostram a profissional responsável e a situação do Pix.</p>
         <div class="schedule-board" id="schedule-board"></div>
+        <section class="test-agenda" aria-labelledby="test-agenda-title">
+          <h4 id="test-agenda-title">Teste de hoje — 23/10/2026</h4>
+          <p class="test-agenda__notice"><strong>Somente teste:</strong> estes registros não são atendimentos reais, não têm horário e não ocupam vagas da agenda. Para testar o fluxo, use o QR da doutora, digite R$ 0,01 no banco, envie o comprovante pelo WhatsApp e só então registre o recebimento e libere o teste neste painel. A liberação não confirma um pagamento ou consulta real.</p>
+          <p class="status-message" id="test-agenda-status" role="status" aria-live="polite"></p>
+          <div class="test-agenda__list" id="test-agenda-list" aria-live="polite"></div>
+        </section>
       </section>
       <div class="booking-list" id="booking-list" aria-live="polite"></div>
       <nav class="pagination" aria-label="Paginação dos agendamentos">
@@ -133,6 +139,6 @@
   </dialog>
 
   <script src="./scripts/agenda-config.js"></script>
-  <script type="module" src="./scripts/admin.js?v=required-login-20261023"></script>
+  <script type="module" src="./scripts/admin.js?v=test-flow-20261023"></script>
 </body>
 </html>
