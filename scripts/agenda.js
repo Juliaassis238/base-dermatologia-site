@@ -3,6 +3,7 @@
 
   const config = window.BASE_AGENDA_CONFIG || {};
   const apiBase = String(config.apiBaseUrl || '').replace(/\/+$/, '');
+  const measurementApiBase = apiBase.replace(/\/agenda$/, '/agenda-measurement');
   const privacyUrl = String(config.privacyUrl || '');
   const demo = !apiBase && new URLSearchParams(window.location.search).get('demo') === '1';
   const anonKey = String(config.anonKey || '');
@@ -34,6 +35,7 @@
   const bookingForm = $('#agenda-form');
   const patientFields = [...bookingForm.querySelectorAll('input')];
   const privacyCheck = $('#agenda-privacy-check');
+  const measurementCheck = $('#agenda-measurement-check');
   const submitButton = $('#agenda-submit');
   const summaryTitle = $('#agenda-summary-title');
   const summaryDetail = $('#agenda-summary-detail');
@@ -285,6 +287,7 @@
     submitButton.disabled = !liveReady || !state.selectedSlot || !privacyAccepted || !fieldsReady;
     for (const field of patientFields) field.disabled = !liveReady;
     privacyCheck.disabled = !liveReady;
+    measurementCheck.disabled = !liveReady;
     if (privacyUrl) {
       privacyLink.href = privacyUrl;
       privacyLink.hidden = false;
@@ -293,8 +296,21 @@
     }
   }
 
+  function getConsentedAdClickIdentifier() {
+    if (!measurementCheck.checked) return null;
+    const params = new URLSearchParams(window.location.search);
+    for (const type of ['gclid', 'gbraid', 'wbraid']) {
+      const value = String(params.get(type) || '').trim();
+      if (value && value.length <= 512 && /^[A-Za-z0-9._~+/-]+$/.test(value)) {
+        return { type, value };
+      }
+    }
+    return null;
+  }
+
   async function apiJson(endpoint, options = {}) {
-      const response = await fetch(`${apiBase}/${endpoint}`, {
+      const requestBase = String(options.baseUrl || apiBase).replace(/\/+$/, '');
+      const response = await fetch(`${requestBase}/${endpoint}`, {
       method: options.method || 'GET',
       headers: {
         Accept: 'application/json',
@@ -345,6 +361,7 @@
 
   bookingForm.addEventListener('input', updateSubmitState);
   privacyCheck.addEventListener('change', updateSubmitState);
+  measurementCheck.addEventListener('change', updateSubmitState);
   cpfField.addEventListener('input', () => {
     cpfField.value = formatCpf(cpfField.value);
     const cpf = digitsOnly(cpfField.value);
@@ -402,6 +419,23 @@
       });
       if (!result.bookingId || result.status !== 'pending_payment' || result.paymentRequired !== true) {
         throw new Error('A solicitação não foi criada. Atualize os horários antes de tentar novamente.');
+      }
+      const clickIdentifier = getConsentedAdClickIdentifier();
+      if (measurementCheck.checked) {
+        try {
+          await apiJson('record-ad-measurement-consent', {
+            method: 'POST',
+            baseUrl: measurementApiBase,
+            body: {
+              bookingId: result.bookingId,
+              accessToken: result.accessToken,
+              consent: true,
+              ...(clickIdentifier || {})
+            }
+          });
+        } catch {
+          // A reserva permanece válida; atribuição falha de forma segura sem reter dados no navegador.
+        }
       }
       const patientName = String(formData.get('fullName') || '').trim();
       paymentPanel.dataset.bookingId = String(result.bookingId);

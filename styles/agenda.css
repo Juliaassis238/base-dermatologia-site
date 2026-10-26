@@ -62,6 +62,7 @@
 .online-agenda__form input::placeholder{color:#9a8d81}
 .online-agenda__form input:disabled{background:#f3eee7;color:#8f857c}
 .online-agenda__privacy{display:flex!important;align-items:flex-start;gap:.55rem!important;margin-top:.15rem;color:var(--muted)!important;font-size:.72rem!important;font-weight:400!important;line-height:1.4;letter-spacing:0!important;text-transform:none!important}
+.online-agenda__privacy--optional{padding:.65rem .75rem;border:1px solid var(--line);background:rgba(255,255,255,.38)}
 .online-agenda__privacy input{flex:none;width:1rem;height:1rem;min-height:1rem;margin:.12rem 0 0;accent-color:var(--olive)}
 .online-agenda__privacy a{color:var(--wine);text-underline-offset:2px}
 .online-agenda__privacy a[hidden]{display:none}
