@@ -359,6 +359,21 @@
     paymentPanel.hidden = false;
   }
 
+  whatsappLink.addEventListener('click', () => {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'send_pix_receipt_whatsapp',
+      conversion_event: 'pix_receipt_whatsapp_click',
+    });
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'send_pix_receipt_whatsapp', {
+        event_category: 'engagement',
+        event_label: 'pix_receipt_whatsapp_click',
+        transport_type: 'beacon',
+      });
+    }
+  });
+
   bookingForm.addEventListener('input', updateSubmitState);
   privacyCheck.addEventListener('change', updateSubmitState);
   measurementCheck.addEventListener('change', updateSubmitState);
