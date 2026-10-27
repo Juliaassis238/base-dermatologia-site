@@ -366,6 +366,10 @@
       conversion_event: 'pix_receipt_whatsapp_click',
     });
     if (typeof window.gtag === 'function') {
+      window.gtag('event', 'conversion', {
+        send_to: 'AW-18490439152/dqopCI6rsqsdEPDr9vBE',
+        transport_type: 'beacon',
+      });
       window.gtag('event', 'send_pix_receipt_whatsapp', {
         event_category: 'engagement',
         event_label: 'pix_receipt_whatsapp_click',
